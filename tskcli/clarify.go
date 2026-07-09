@@ -1,6 +1,7 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,8 +10,11 @@ import (
 )
 
 func runClarify(home string, args []string) error {
-	if len(args) == 0 {
-		return fail(fmt.Errorf("tsk clarify: subcommand required"))
+	setCommand(currentCtx, "clarify", args)
+
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(clarifyHelp())
+		return nil
 	}
 	sub := args[0]
 	subArgs := args[1:]
@@ -90,8 +94,15 @@ func runClarifyConfirm(home string, args []string) error {
 	setCommand(currentCtx, "clarify", append([]string{"confirm"}, args...))
 
 	var assumeYes bool
-	remaining, err := lessflags.Bool("-y,--yes", &assumeYes).Parse(args)
+	remaining, err := lessflags.
+		Bool("-y,--yes", &assumeYes).
+		Help("-h,--help", clarifyHelp()).
+		HelpNoExit().
+		Parse(args)
 	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
 		return fail(err)
 	}
 	if len(remaining) != 1 {

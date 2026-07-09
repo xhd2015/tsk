@@ -1,0 +1,43 @@
+package pipeline
+
+// UnicodeArt is the fixed compact pipeline diagram (max line width 36).
+const UnicodeArt = `       ●
+       │
+       ▼
+  ╭────────╮
+  │ create │
+  ╰───┬────╯
+      │ claim
+      ▼
+ ╭────────────╮
+ │ in_process │
+ ╰─────┬──────╯
+       │ research
+       ▼
+╭───────────────╮
+│ clarification │◄── refine
+╰───────┬───────╯
+        │ confirmed
+        ▼
+╭────────────────╮
+│ implementation │
+╰───────┬────────╯
+        ▼
+ ╭──────────────╮
+ │ verification │
+ ╰──────┬───────╯
+        ▼
+   ╭─────────╮
+   │ summary │
+   ╰────┬────╯
+        ├─no followup►╭──────╮
+        │             │ done │
+        │questions    ╰──┬───╯
+        ▼                │
+╭───────────────╮        │
+│ user_followup │        │
+╰───────┬───────╯        │
+        ├─────►┘ satisfied
+        └───────┬────────┘
+                ▼
+                ◉`

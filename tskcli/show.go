@@ -1,19 +1,31 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
+	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
 func runShow(home string, args []string) error {
 	setCommand(currentCtx, "show", args)
 
-	if len(args) != 1 {
+	remaining, err := lessflags.
+		Help("-h,--help", showHelp()).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
+		return fail(err)
+	}
+	if len(remaining) != 1 {
 		return fail(fmt.Errorf("tsk show: task id required"))
 	}
-	id, err := parseID(args[0])
+	id, err := parseID(remaining[0])
 	if err != nil {
 		return fail(err)
 	}

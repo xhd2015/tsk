@@ -10,7 +10,7 @@ and append-only `events.jsonl` auditing.
 
 # DSN (Domain Specific Notion)
 
-- **tsk CLI** — standalone binary; subcommand dispatcher with `less-flags` per handler; no top-level flags; errors to stderr, exit code 1 on failure; non-empty stdout ends with trailing `\n`, empty stdout has no bytes.
+- **tsk CLI** — standalone binary; subcommand dispatcher with `less-flags` per handler; no top-level flags except `-h`/`--help`; empty args or help flags print `topHelp` on stdout (exit 0); each handler uses `lessflags.ErrHelp` for command help; errors to stderr once (no duplicate from `fail()` + `main`), exit code 1 on failure; non-empty stdout ends with trailing `\n`, empty stdout has no bytes; `create` success prints task id + `\n` on stdout.
 - **TSK_HOME** — storage root env var (default `~/.tsk`); tests isolate per run at `{WorkRoot}/.tsk`.
 - **TSK_DATE** — optional env var (`YYYY-MM-DD`) for deterministic timestamps; all tests set `TSK_DATE=2026-07-09`.
 - **Work root** — temp directory per leaf; holds isolated `TSK_HOME`.
@@ -25,7 +25,7 @@ and append-only `events.jsonl` auditing.
 - **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`.
 - **topic mkdir** — creates topic directory tree under `topics/`.
 - **next** — stdout prints id of oldest `in_process` task by `created_at`, or empty stdout when none.
-- **status** — ASCII pipeline diagram with marker on current stage (not a list filter).
+- **status** — hand-made compact pipeline via `tskcli/pipeline` (~34 col max, 3-line boxes with labels inside `│ … │` rows); flags `--color` (default on TTY), `--plain` (ASCII `+---+` / `| label |`, no ANSI); semantic ANSI overlay (current=green bold, visited=grey, edge-into-current=orange); `context/pipeline.mmd` ignored (may remain on disk harmlessly).
 - **Request.Args** — CLI arguments passed to `tsk` (subcommand + flags + positionals).
 - **Request.TaskID** — task id for multi-step setups and assertions.
 - **Session fixtures** — doctest injects `DOCTEST_SESSION_ID`; `getTskBin` builds once per session to `{cache}/bin/tsk` with file lock across leaf processes.
@@ -53,14 +53,34 @@ tsk tests
 │   └── from-summary/             # at summary → done, terminal stage
 ├── followup/                     # tsk followup
 │   └── basic/                    # at summary → user_followup + context file
-├── status/                       # tsk status (pipeline diagram)
-│   └── diagram/                  # at clarification → ASCII + marker
+├── status/                       # tsk status (compact pipeline)
+│   ├── diagram/                  # clarification + --color → compact art + green highlight
+│   ├── at-create/                # create stage + │ create │ + green ANSI
+│   ├── at-done/                  # done stage + │ done │ + green ANSI
+│   ├── no-color-pipe/            # piped stdout → box chars, no ANSI
+│   ├── plain-ascii/              # --plain → ASCII + boxes, no ANSI
+│   ├── compact-width/            # every stdout line width ≤ 36
+│   ├── box-format/               # each stage has │ <stage> │ box row
+│   ├── arrows/                   # ▼ main flow, branch arrows, followup before ◉
+│   ├── edge-labels/              # claim/research/confirmed/questions/satisfied order
+│   └── fork-semantics/           # no followup vs questions rows; satisfied ► into done rail
 ├── show/                         # tsk show
 │   └── basic/                    # metadata block for id
 ├── list/                         # tsk list
 │   └── filter/                   # --stage create filters ids
-└── events/                       # events.jsonl audit
-    └── append/                   # any command appends one line
+├── events/                       # events.jsonl audit
+│   └── append/                   # any command appends one line
+├── help/                         # --help / -h at every level
+│   ├── root-empty/               # no args → top help
+│   ├── root-flag/                # --help → top help
+│   ├── root-h/                   # -h → top help
+│   ├── create/                   # create --help → flags
+│   ├── topic/                    # topic --help → set, mkdir
+│   ├── label/                    # label --help → add, rm
+│   └── clarify/                  # clarify --help → add, list, confirm
+└── ux/                           # CLI UX conventions
+    ├── error-once/               # advance missing id → single stderr line
+    └── create-prints-id/         # create prints id\n on stdout
 ```
 
 ## Test Case Index
@@ -78,10 +98,28 @@ tsk tests
 | 9 | next/oldest | two `in_process` tasks → stdout = older id |
 | 10 | done/from-summary | at summary → `tsk done` → stage done, dir renamed |
 | 11 | followup/basic | at summary → `tsk followup` → `user_followup` + `context/followup-*.md` |
-| 12 | status/diagram | at clarification → stdout has pipeline ASCII + current stage marker |
+| 12 | status/diagram | at clarification + `--color` → compact box art, `│ clarification │`, width ≤ 36, edge labels `refine`/`confirmed`, green on clarification |
+| 25 | status/at-create | create only + `status --color` → `│ create │` with green ANSI |
+| 26 | status/at-done | at done + `status --color` → `│ done │` with green ANSI |
+| 27 | status/no-color-pipe | clarification, piped → `│ clarification │`, box chars, no ANSI |
+| 28 | status/plain-ascii | `status --plain` → `| create |` or `+` ASCII boxes, no ANSI |
+| 29 | status/compact-width | full diagram → every stdout line rune width ≤ 36 |
+| 30 | status/box-format | full diagram → each stage has `│ <stage> │` (or ascii `| <stage> |`) box row |
+| 31 | status/arrows | full diagram → ≥6 `▼`, branch `►`/`──►`, `◄──` refine, followup before `◉` |
+| 32 | status/edge-labels | full diagram → edge labels in correct order (claim, research, confirmed, questions, satisfied) |
+| 33 | status/fork-semantics | full diagram → no followup on horizontal branch; questions separate; satisfied has ►; no ╰──▼ on done |
 | 13 | show/basic | `tsk show <id>` → metadata block with title, stage, labels |
 | 14 | list/filter | `tsk list --stage create` → matching ids one per line |
 | 15 | events/append | `tsk create` → `events.jsonl` gains one audit line |
+| 16 | help/root-empty | `tsk` (no args) → exit 0; stdout has `Usage:` + command list; stderr empty |
+| 17 | help/root-flag | `tsk --help` → exit 0; top help on stdout; stderr empty |
+| 18 | help/root-h | `tsk -h` → exit 0; stdout contains `Usage:` |
+| 19 | help/create | `tsk create --help` → create usage with `--label` and `--topic` |
+| 20 | help/topic | `tsk topic --help` → lists `set`, `mkdir` subcommands |
+| 21 | help/label | `tsk label --help` → lists `add`, `rm` subcommands |
+| 22 | help/clarify | `tsk clarify --help` → lists `add`, `list`, `confirm` |
+| 23 | ux/error-once | `tsk advance` (no id) → exit 1; `task id required` on stderr exactly once |
+| 24 | ux/create-prints-id | `tsk create "hello"` → stdout `1\n`; inbox dir created; stderr empty |
 
 ## How to Run
 
@@ -104,6 +142,8 @@ doctest test ./tests/status
 doctest test ./tests/show
 doctest test ./tests/list
 doctest test ./tests/events
+doctest test ./tests/help
+doctest test ./tests/ux
 
 # Run individual leaves
 doctest test ./tests/create/no-topic
@@ -115,9 +155,26 @@ doctest test ./tests/next/oldest
 doctest test ./tests/done/from-summary
 doctest test ./tests/followup/basic
 doctest test ./tests/status/diagram
+doctest test ./tests/status/at-create
+doctest test ./tests/status/at-done
+doctest test ./tests/status/no-color-pipe
+doctest test ./tests/status/plain-ascii
+doctest test ./tests/status/compact-width
+doctest test ./tests/status/box-format
+doctest test ./tests/status/arrows
+doctest test ./tests/status/edge-labels
 doctest test ./tests/show/basic
 doctest test ./tests/list/filter
 doctest test ./tests/events/append
+doctest test ./tests/help/root-empty
+doctest test ./tests/help/root-flag
+doctest test ./tests/help/root-h
+doctest test ./tests/help/create
+doctest test ./tests/help/topic
+doctest test ./tests/help/label
+doctest test ./tests/help/clarify
+doctest test ./tests/ux/error-once
+doctest test ./tests/ux/create-prints-id
 ```
 
 ```go

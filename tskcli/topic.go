@@ -10,8 +10,11 @@ import (
 )
 
 func runTopic(home string, args []string) error {
-	if len(args) == 0 {
-		return fail(fmt.Errorf("tsk topic: subcommand required"))
+	setCommand(currentCtx, "topic", args)
+
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(topicHelp())
+		return nil
 	}
 	switch args[0] {
 	case "set":

@@ -1,15 +1,15 @@
 # Scenario
 
-**Feature**: status at clarification highlights current stage in pipeline
+**Feature**: colored status at clarification highlights current stage in compact pipeline
 
 ```
-create -> advance x2 (clarification) -> tsk status <id>
+create -> advance x2 (clarification) -> tsk status --color <id>
 ```
 
 ## Steps
 
 1. Advance task to `clarification`.
-2. Run `tsk status <id>`.
+2. Run `tsk status --color <id>`.
 
 ```go
 func Setup(t *testing.T, req *Request) error {
@@ -18,7 +18,7 @@ func Setup(t *testing.T, req *Request) error {
 	advanceTask(t, req, id, "")
 	advanceTask(t, req, id, "")
 	req.TaskID = id
-	req.Args = []string{"status", fmt.Sprintf("%d", id)}
+	req.Args = statusArgs(id, "--color")
 	return nil
 }
 ```

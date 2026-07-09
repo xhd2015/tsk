@@ -444,6 +444,47 @@ func assertContains(t *testing.T, s, substr string) {
 	}
 }
 
+func assertHelpOK(t *testing.T, resp *Response) {
+	t.Helper()
+	if resp.ExitCode != 0 {
+		t.Fatalf("help exit code %d stderr=%q", resp.ExitCode, resp.Stderr)
+	}
+	if resp.Stderr != "" {
+		t.Fatalf("help stderr should be empty, got %q", resp.Stderr)
+	}
+	if resp.Stdout == "" {
+		t.Fatal("help stdout should not be empty")
+	}
+	if !strings.HasSuffix(resp.Stdout, "\n") {
+		t.Fatalf("help stdout should end with newline, got %q", resp.Stdout)
+	}
+}
+
+func assertStderrContainsCount(t *testing.T, stderr, substr string, want int) {
+	t.Helper()
+	got := strings.Count(stderr, substr)
+	if got != want {
+		t.Fatalf("stderr substring %q: got %d occurrences want %d; stderr=%q", substr, got, want, stderr)
+	}
+}
+
+func topLevelSubcommands() []string {
+	return []string{
+		"create", "list", "show", "status", "advance", "stage", "next",
+		"label", "topic", "clarify", "followup", "done",
+	}
+}
+
+func assertTopHelpStdout(t *testing.T, resp *Response) {
+	t.Helper()
+	assertHelpOK(t, resp)
+	assertContains(t, resp.Stdout, "Usage:")
+	for _, cmd := range topLevelSubcommands() {
+		assertContains(t, resp.Stdout, cmd)
+	}
+	assertContains(t, resp.Stdout, "Run tsk <command> --help for command-specific options.")
+}
+
 func assertNotContains(t *testing.T, s, substr string) {
 	t.Helper()
 	if strings.Contains(s, substr) {
@@ -598,6 +639,10 @@ func ensureHelpersUsed() {
 	_ = assertFileNotExists
 	_ = assertDirExists
 	_ = assertContains
+	_ = assertHelpOK
+	_ = assertStderrContainsCount
+	_ = topLevelSubcommands
+	_ = assertTopHelpStdout
 	_ = assertNotContains
 	_ = assertIndexEquals
 	_ = assertTaskStage

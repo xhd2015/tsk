@@ -1,18 +1,36 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
+	lessflags "github.com/xhd2015/less-flags"
+	"github.com/xhd2015/tsk/tskcli/pipeline"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
 func runStatus(home string, args []string) error {
 	setCommand(currentCtx, "status", args)
 
-	if len(args) != 1 {
+	var colorFlag bool
+	var plain bool
+	remaining, err := lessflags.
+		Bool("--color", &colorFlag).
+		Bool("--plain", &plain).
+		Help("-h,--help", statusHelp()).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
+		return fail(err)
+	}
+	if len(remaining) != 1 {
 		return fail(fmt.Errorf("tsk status: task id required"))
 	}
-	id, err := parseID(args[0])
+	id, err := parseID(remaining[0])
 	if err != nil {
 		return fail(err)
 	}
@@ -22,18 +40,21 @@ func runStatus(home string, args []string) error {
 		return fail(err)
 	}
 
-	stages := storage.AllStages
-	for i, stage := range stages {
-		line := stage
-		if stage == task.Stage {
-			line = "> " + stage + " <"
-		} else {
-			line = "  " + stage
-		}
-		fmt.Println(line)
-		if i < len(stages)-1 {
-			fmt.Println("  |")
-		}
+	color := colorFlag
+	if !plain && !colorFlag {
+		color = isStdoutTTY()
 	}
+
+	rendered := pipeline.Render(plain)
+	out := pipeline.Highlight(rendered, task, color && !plain)
+	fmt.Print(out)
 	return nil
+}
+
+func isStdoutTTY() bool {
+	fi, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }

@@ -1,15 +1,27 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 
+	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
 func runNext(home string, args []string) error {
 	setCommand(currentCtx, "next", args)
 
-	if len(args) != 0 {
+	remaining, err := lessflags.
+		Help("-h,--help", nextHelp()).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
+		return fail(err)
+	}
+	if len(remaining) != 0 {
 		return fail(fmt.Errorf("tsk next: unexpected arguments"))
 	}
 

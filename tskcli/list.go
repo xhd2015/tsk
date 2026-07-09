@@ -1,6 +1,7 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,8 +18,13 @@ func runList(home string, args []string) error {
 		String("--stage", &stage).
 		String("--label", &label).
 		String("--topic", &topicPrefix).
+		Help("-h,--help", listHelp()).
+		HelpNoExit().
 		Parse(args)
 	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
 		return fail(err)
 	}
 	if len(remaining) != 0 {

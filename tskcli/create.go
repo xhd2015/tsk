@@ -1,6 +1,7 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,8 +19,13 @@ func runCreate(home string, args []string) error {
 	remaining, err := lessflags.
 		StringSlice("--label", &labels).
 		String("--topic", &topic).
+		Help("-h,--help", createHelp()).
+		HelpNoExit().
 		Parse(args)
 	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
 		return fail(err)
 	}
 	if len(remaining) != 1 {
@@ -91,5 +97,9 @@ func runCreate(home string, args []string) error {
 	if err := storage.WriteTask(taskDir, task); err != nil {
 		return err
 	}
-	return storage.WriteIndex(home, id, relPath)
+	if err := storage.WriteIndex(home, id, relPath); err != nil {
+		return err
+	}
+	fmt.Println(id)
+	return nil
 }

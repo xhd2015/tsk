@@ -1,6 +1,7 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 
 	lessflags "github.com/xhd2015/less-flags"
@@ -11,8 +12,15 @@ func runStage(home string, args []string) error {
 	setCommand(currentCtx, "stage", args)
 
 	var note string
-	remaining, err := lessflags.String("--note", &note).Parse(args)
+	remaining, err := lessflags.
+		String("--note", &note).
+		Help("-h,--help", stageHelp()).
+		HelpNoExit().
+		Parse(args)
 	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
 		return fail(err)
 	}
 	if len(remaining) != 2 {

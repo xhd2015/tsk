@@ -2,7 +2,6 @@ package tskcli
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/xhd2015/tsk/tskcli/storage"
@@ -51,8 +50,9 @@ func (ctx *invocationContext) finish(exitCode int) {
 }
 
 func dispatch(home string, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("tsk: missing subcommand")
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(topHelp())
+		return nil
 	}
 	switch args[0] {
 	case "create":
@@ -93,6 +93,5 @@ func setCommand(ctx *invocationContext, command string, eventArgs []string) {
 }
 
 func fail(err error) error {
-	fmt.Fprintln(os.Stderr, err)
 	return err
 }

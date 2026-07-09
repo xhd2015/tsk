@@ -8,8 +8,11 @@ import (
 )
 
 func runLabel(home string, args []string) error {
-	if len(args) < 2 {
-		return fail(fmt.Errorf("tsk label: usage: tsk label add|rm <id> <label>"))
+	setCommand(currentCtx, "label", args)
+
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(labelHelp())
+		return nil
 	}
 	switch args[0] {
 	case "add":
