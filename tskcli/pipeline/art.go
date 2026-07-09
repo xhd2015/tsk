@@ -1,6 +1,10 @@
 package pipeline
 
 // UnicodeArt is the fixed compact pipeline diagram (max line width 36).
+//
+// user_followup has two exits:
+//   - refine → loops back to clarification (right rail)
+//   - satisfied → joins no-followup into done → terminal
 const UnicodeArt = `       ●
        │
        ▼
@@ -15,29 +19,34 @@ const UnicodeArt = `       ●
        │ research
        ▼
 ╭───────────────╮
-│ clarification │◄── refine
-╰───────┬───────╯
-        │ confirmed
-        ▼
-╭────────────────╮
-│ implementation │
-╰───────┬────────╯
-        ▼
- ╭──────────────╮
- │ verification │
- ╰──────┬───────╯
-        ▼
-   ╭─────────╮
-   │ summary │
-   ╰────┬────╯
-        ├─no followup►╭──────╮
-        │             │ done │
-        │questions    ╰──┬───╯
-        ▼                │
-╭───────────────╮        │
-│ user_followup │        │
-╰───────┬───────╯        │
-        ├─────►┘ satisfied
-        └───────┬────────┘
-                ▼
-                ◉`
+│ clarification │◄──────────┐
+╰───────┬───────╯           │
+        │ confirmed         │
+        ▼                   │
+╭────────────────╮          │
+│ implementation │          │
+╰───────┬────────╯          │
+        ▼                   │
+ ╭──────────────╮           │
+ │ verification │           │
+ ╰──────┬───────╯           │
+        ▼                   │
+   ╭─────────╮              │
+   │ summary │              │
+   ╰────┬────╯              │
+        ├─no followup───┐   │
+        │               │   │
+        │questions      │   │
+        ▼               │   │
+╭───────────────╮       │   │
+│ user_followup │       │   │
+╰───┬───────┬───╯       │   │
+    │       │           │   │
+    │       └─satisfied►┤   │
+    │                   │   │
+    │              ╭────┴─╮ │
+    │              │ done │ │
+    │              ╰──┬───╯ │
+    │                 ▼     │
+    │                 ◉     │
+    └──────refine───────────┘`

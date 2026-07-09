@@ -1,15 +1,17 @@
 # Scenario
 
-**Feature**: `tsk status` renders hand-made compact pipeline with optional ANSI highlights
+**Feature**: `tsk status` renders hand-made compact pipeline (default diagram) or agent plain view
 
 ```
-# flags --color, --plain; embedded compact art (~34 col max, 3-line boxes)
-tsk status [--color] [--plain] <id> -> compact pipeline diagram on stdout
+# flags --format=diagram|agent, --color, --plain
+# diagram (default): compact art (~34 col max, 3-line boxes) + optional ANSI
+# agent: 2-row plain spine + back line + facts; no ANSI, no boxes
+tsk status [--format=diagram|agent] [--color] [--plain] <id> -> pipeline view on stdout
 ```
 
 ## Context
 
-Shared helpers for box-line assertions, width limits, ANSI checks, and advancing to terminal `done`.
+Shared helpers for box-line assertions, width limits, ANSI checks, and advancing to terminal `done`. Agent-format helpers live under `status/agent/SETUP.md`.
 
 ```go
 import "regexp"

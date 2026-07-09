@@ -15,7 +15,9 @@ func runStatus(home string, args []string) error {
 
 	var colorFlag bool
 	var plain bool
+	var format string
 	remaining, err := lessflags.
+		String("--format", &format).
 		Bool("--color", &colorFlag).
 		Bool("--plain", &plain).
 		Help("-h,--help", statusHelp()).
@@ -26,6 +28,15 @@ func runStatus(home string, args []string) error {
 			return nil
 		}
 		return fail(err)
+	}
+	if format == "" {
+		format = "diagram"
+	}
+	switch format {
+	case "diagram", "agent":
+		// ok
+	default:
+		return fail(fmt.Errorf("tsk status: invalid --format %q (allowed: diagram, agent)", format))
 	}
 	if len(remaining) != 1 {
 		return fail(fmt.Errorf("tsk status: task id required"))
@@ -38,6 +49,12 @@ func runStatus(home string, args []string) error {
 	task, _, err := storage.LoadTaskByID(home, id)
 	if err != nil {
 		return fail(err)
+	}
+
+	if format == "agent" {
+		// agent view: plain facts + 2-row art; never ANSI even with --color
+		fmt.Print(pipeline.RenderAgent(task))
+		return nil
 	}
 
 	color := colorFlag

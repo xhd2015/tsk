@@ -1,6 +1,10 @@
 package pipeline
 
 // ASCIIArt is the --plain variant of the compact pipeline diagram.
+//
+// user_followup has two exits:
+//   - refine → loops back to clarification (right rail)
+//   - satisfied → joins no-followup into done → terminal
 const ASCIIArt = `       *
        |
        v
@@ -15,29 +19,34 @@ const ASCIIArt = `       *
        | research
        v
 +---------------+
-| clarification |<-- refine
-+-------+-------+
-        | confirmed
-        v
-+----------------+
-| implementation |
-+-------+--------+
-        v
- +--------------+
- | verification |
- +------+-------+
-        v
-   +---------+
-   | summary |
-   +----+----+
-        +-no followup>+------+
-        |             | done |
-        |questions    +--+---+
-        v                |
-+---------------+        |
-| user_followup |        |
-+-------+-------+        |
-        +----->+ satisfied
-        +-------+--------+
-                v
-                @`
+| clarification |<----------+
++-------+-------+           |
+        | confirmed         |
+        v                   |
++----------------+          |
+| implementation |          |
++-------+--------+          |
+        v                   |
+ +--------------+           |
+ | verification |           |
+ +------+-------+           |
+        v                   |
+   +---------+              |
+   | summary |              |
+   +----+----+              |
+        +-no followup---+   |
+        |               |   |
+        |questions      |   |
+        v               |   |
++---------------+       |   |
+| user_followup |       |   |
++---+-------+---+       |   |
+    |       |           |   |
+    |       +-satisfied>+   |
+    |                   |   |
+    |              +----+-+ |
+    |              | done | |
+    |              +--+---+ |
+    |                 v     |
+    |                 @     |
+    +------refine-----------+`

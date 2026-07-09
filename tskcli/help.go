@@ -59,13 +59,18 @@ Show task metadata.
 }
 
 func statusHelp() string {
-	return `Usage: tsk status [--color] [--plain] <id>
+	return `Usage: tsk status [--format=diagram|agent] [--color] [--plain] <id>
 
-Show compact hand-made pipeline diagram for a task.
+Show stage pipeline for a task.
+
+Formats:
+  diagram         compact hand-made pipeline art (default); --color/--plain apply
+  agent           2-row plain spine + facts; no ANSI, no boxes
 
 Flags:
-  --color         force ANSI highlight (default on TTY)
-  --plain         ASCII boxes, no ANSI
+  --format FORMAT output format: diagram (default) or agent
+  --color         force ANSI highlight for diagram (default on TTY; ignored for agent)
+  --plain         ASCII boxes, no ANSI (diagram only)
   -h, --help      show this help
 `
 }

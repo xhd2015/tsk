@@ -25,7 +25,7 @@ and append-only `events.jsonl` auditing.
 - **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`.
 - **topic mkdir** — creates topic directory tree under `topics/`.
 - **next** — stdout prints id of oldest `in_process` task by `created_at`, or empty stdout when none.
-- **status** — hand-made compact pipeline via `tskcli/pipeline` (~34 col max, 3-line boxes with labels inside `│ … │` rows); flags `--color` (default on TTY), `--plain` (ASCII `+---+` / `| label |`, no ANSI); semantic ANSI overlay (current=green bold, visited=grey, edge-into-current=orange); `context/pipeline.mmd` ignored (may remain on disk harmlessly).
+- **status** — pipeline view of a task; flags `--format=diagram|agent` (default `diagram`), `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~34 col max, 3-line boxes with labels inside `│ … │` rows); semantic ANSI overlay (current=green bold, visited=grey, edge-into-current=orange). **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `stage`, `terminal`, `advance`/`next`); no ANSI even with `--color`; no rectangle chrome; no 36-col cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
 - **Request.Args** — CLI arguments passed to `tsk` (subcommand + flags + positionals).
 - **Request.TaskID** — task id for multi-step setups and assertions.
 - **Session fixtures** — doctest injects `DOCTEST_SESSION_ID`; `getTskBin` builds once per session to `{cache}/bin/tsk` with file lock across leaf processes.
@@ -53,7 +53,7 @@ tsk tests
 │   └── from-summary/             # at summary → done, terminal stage
 ├── followup/                     # tsk followup
 │   └── basic/                    # at summary → user_followup + context file
-├── status/                       # tsk status (compact pipeline)
+├── status/                       # tsk status (diagram | agent formats)
 │   ├── diagram/                  # clarification + --color → compact art + green highlight
 │   ├── at-create/                # create stage + │ create │ + green ANSI
 │   ├── at-done/                  # done stage + │ done │ + green ANSI
@@ -63,7 +63,18 @@ tsk tests
 │   ├── box-format/               # each stage has │ <stage> │ box row
 │   ├── arrows/                   # ▼ main flow, branch arrows, followup before ◉
 │   ├── edge-labels/              # claim/research/confirmed/questions/satisfied order
-│   └── fork-semantics/           # no followup vs questions rows; satisfied ► into done rail
+│   ├── fork-semantics/           # no followup vs questions rows; satisfied ► into done rail
+│   ├── agent/                    # --format=agent (2-row plain + facts)
+│   │   ├── spine/                # create: spine order, create[doing], facts, no boxes
+│   │   ├── two-rows/             # back line refine+questions; no satisfied on art
+│   │   ├── marks-mid/            # implementation[doing]; past bare; future (name)
+│   │   ├── at-clarification/     # blocked advance; next clarify confirm
+│   │   ├── at-summary/           # next followup + done
+│   │   ├── at-user-followup/     # user_followup[doing]; next refine + done
+│   │   ├── at-done/              # terminal true; done[doing]; advance blocked
+│   │   └── no-ansi/              # --format=agent --color → no ANSI
+│   ├── format-invalid/           # --format=nope → exit 1; stderr once
+│   └── help/                     # status --help documents --format
 ├── show/                         # tsk show
 │   └── basic/                    # metadata block for id
 ├── list/                         # tsk list
@@ -108,6 +119,16 @@ tsk tests
 | 31 | status/arrows | full diagram → ≥6 `▼`, branch `►`/`──►`, `◄──` refine, followup before `◉` |
 | 32 | status/edge-labels | full diagram → edge labels in correct order (claim, research, confirmed, questions, satisfied) |
 | 33 | status/fork-semantics | full diagram → no followup on horizontal branch; questions separate; satisfied has ►; no ╰──▼ on done |
+| 34 | status/agent/spine | `--format=agent` at create → spine order, `create[doing]`, facts, no rect chrome, no ANSI |
+| 35 | status/agent/two-rows | agent art has `user_followup`/`refine`/`questions`; no `satisfied` on art |
+| 36 | status/agent/marks-mid | at implementation → `implementation[doing]`; past bare; future `(…)` |
+| 37 | status/agent/at-clarification | `clarification[doing]`; `advance: blocked`; next mentions clarify confirm |
+| 38 | status/agent/at-summary | `summary[doing]`; next has followup + done |
+| 39 | status/agent/at-user-followup | `user_followup[doing]`; advance→clarification; next advance + done |
+| 40 | status/agent/at-done | `terminal: true`; `done[doing]`; advance blocked |
+| 41 | status/agent/no-ansi | `--format=agent --color` → no `\x1b[` |
+| 42 | status/format-invalid | `--format=nope` → exit 1; single stderr line |
+| 43 | status/help | `status --help` documents `--format` |
 | 13 | show/basic | `tsk show <id>` → metadata block with title, stage, labels |
 | 14 | list/filter | `tsk list --stage create` → matching ids one per line |
 | 15 | events/append | `tsk create` → `events.jsonl` gains one audit line |
@@ -163,6 +184,17 @@ doctest test ./tests/status/compact-width
 doctest test ./tests/status/box-format
 doctest test ./tests/status/arrows
 doctest test ./tests/status/edge-labels
+doctest test ./tests/status/agent
+doctest test ./tests/status/agent/spine
+doctest test ./tests/status/agent/two-rows
+doctest test ./tests/status/agent/marks-mid
+doctest test ./tests/status/agent/at-clarification
+doctest test ./tests/status/agent/at-summary
+doctest test ./tests/status/agent/at-user-followup
+doctest test ./tests/status/agent/at-done
+doctest test ./tests/status/agent/no-ansi
+doctest test ./tests/status/format-invalid
+doctest test ./tests/status/help
 doctest test ./tests/show/basic
 doctest test ./tests/list/filter
 doctest test ./tests/events/append
