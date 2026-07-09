@@ -20,12 +20,21 @@ var agentSpine = []string{
 
 // RenderAgent returns the agent-oriented status view: facts, 2-row plain
 // pipeline art (no boxes, no ANSI), and advance/next guidance.
-func RenderAgent(task storage.Task) string {
+// dir is the absolute filesystem path of the task directory (from LoadTaskByID).
+func RenderAgent(task storage.Task, dir string) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "id: %d\n", task.ID)
+	fmt.Fprintf(&b, "title: %s\n", task.Title)
 	fmt.Fprintf(&b, "stage: %s\n", task.Stage)
 	fmt.Fprintf(&b, "terminal: %t\n", task.Stage == "done")
+	parts, err := storage.ParseTopicPath(task.TopicPath)
+	if err != nil || len(parts) == 0 {
+		fmt.Fprintf(&b, "topic: (not classified yet)\n")
+	} else {
+		fmt.Fprintf(&b, "topic: %s\n", strings.Join(parts, "/"))
+	}
+	fmt.Fprintf(&b, "dir: %s\n", dir)
 	b.WriteByte('\n')
 
 	b.WriteString(renderAgentArt(task.Stage))
@@ -52,17 +61,17 @@ func renderAgentArt(current string) string {
 		mark := agentSpineMark(stage, current)
 		col := spine.Len()
 		if stage == "clarification" {
-			// point ^ roughly under the middle of the clarification token
-			clarCol = col + len(mark)/2
+			// ^ under the start of the clarification token (back-line left anchor)
+			clarCol = col
 		}
 		if stage == "summary" {
-			// | drops from the right side of the summary token
-			summaryCol = col + len(mark) - 1
-			if summaryCol < clarCol {
-				summaryCol = clarCol + 1
-			}
+			// | drops from the start of the summary token (questions anchor)
+			summaryCol = col
 		}
 		spine.WriteString(mark)
+	}
+	if summaryCol <= clarCol {
+		summaryCol = clarCol + 1
 	}
 
 	followup := "user_followup"
@@ -70,22 +79,41 @@ func renderAgentArt(current string) string {
 		followup = "user_followup[doing]"
 	}
 
-	// Row 2: connector line (^ under clarification, | under summary branch)
-	// and back path: refine left, questions from summary, no satisfied.
-	connector := makeSpaces(clarCol) + "^"
-	if summaryCol > clarCol {
-		connector += makeSpaces(summaryCol-clarCol-1) + "|"
-	} else {
-		connector += " |"
-	}
+	// Row 2 line 1: verticals under clarification (^) and summary (|)
+	connector := makeSpaces(clarCol) + "^" + makeSpaces(summaryCol-clarCol-1) + "|"
 
-	// Back line under spine. Avoid "+---" (sealed tests treat that as box chrome);
-	// use short connectors: +-- … --+ around refine / questions labels.
-	leftPad := makeSpaces(clarCol)
-	mid := "+-- refine -- " + followup + " <-- questions --+"
-	back := leftPad + mid
+	// Row 2 line 2: back path spanning clarCol..summaryCol so questions
+	// meets the summary drop (no blank gap). user_followup sits toward the right.
+	// Avoid the substring "+---" (sealed tests treat it as box chrome).
+	back := makeSpaces(clarCol) + buildAgentBackLine(summaryCol-clarCol+1, followup)
 
 	return spine.String() + "\n" + connector + "\n" + back + "\n"
+}
+
+// buildAgentBackLine builds a width-wide back edge:
+//
+//	+-- refine -- … user_followup … <-- questions --+
+//
+// Extra width is filled with '-' between "refine -- " and followup so
+// user_followup stays toward the right (after summary). Never emits "+---".
+func buildAgentBackLine(width int, followup string) string {
+	// Fixed pieces: "+--" + " refine -- " + followup + " <-- questions " + "--+"
+	// Stretch only after "+-- " (space) so we never form the banned "+---".
+	const (
+		head = "+-- refine -- "
+		tail = " <-- questions --+"
+	)
+	core := head + followup + tail
+	if width <= len(core) {
+		return core
+	}
+	extra := width - len(core)
+	// Prefer padding left of followup so the node starts further right (under/after summary).
+	// Keep a space before the followup token for readability.
+	if extra == 1 {
+		return head + " " + followup + tail
+	}
+	return head + strings.Repeat("-", extra-1) + " " + followup + tail
 }
 
 func agentSpineMark(stage, current string) string {

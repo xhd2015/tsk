@@ -1,17 +1,18 @@
 # Scenario
 
-**Feature**: `tsk status` renders hand-made compact pipeline (default diagram) or agent plain view
+**Feature**: `tsk status` renders hand-made compact pipeline or agent plain view (auto or explicit)
 
 ```
-# flags --format=diagram|agent, --color, --plain
-# diagram (default): compact art (~34 col max, 3-line boxes) + optional ANSI
-# agent: 2-row plain spine + back line + facts; no ANSI, no boxes
+# flags --format=diagram|agent, --color, --plain; auto agent when host detected and no format flags
+# diagram (default outside agents): compact art (~34 col max, 3-line boxes) + optional ANSI
+# agent: 2-row plain spine + back line + facts (id/title/stage/terminal/topic/dir); no ANSI, no boxes
+# auto: bare status + detect/TSK_STATUS_FORMAT → agent; --format/--color/--plain always win
 tsk status [--format=diagram|agent] [--color] [--plain] <id> -> pipeline view on stdout
 ```
 
 ## Context
 
-Shared helpers for box-line assertions, width limits, ANSI checks, and advancing to terminal `done`. Agent-format helpers live under `status/agent/SETUP.md`.
+Shared helpers for box-line assertions, width limits, ANSI checks, and advancing to terminal `done`. Agent-format helpers live under `status/agent/SETUP.md`. Auto-format selection leaves live under `status/auto-format/` (inject host env via `ExtraEnv`; root `tskEnv` clears agent vars for stable diagram defaults).
 
 ```go
 import "regexp"

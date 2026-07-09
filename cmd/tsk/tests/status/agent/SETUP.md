@@ -3,13 +3,13 @@
 **Feature**: `tsk status --format=agent` renders a strict 2-row plain pipeline diagram plus machine-readable facts
 
 ```
-# --format=agent (or --format agent): 2 art rows + id/stage/terminal/advance/next; no ANSI, no boxes
+# --format=agent (or --format agent): 2 art rows + id/title/stage/terminal/topic/dir/advance/next; no ANSI, no boxes
 tsk status --format=agent <id> -> spine with [doing]/(name)/bare marks + back line (refine, questions) + facts
 ```
 
 ## Context
 
-Shared helpers for agent-format diagram structure, node marks, facts block, and no-rectangle chrome. Prefer structural token checks over pixel-perfect spacing on row 2.
+Shared helpers for agent-format diagram structure, node marks, facts block (id → title → stage → terminal → topic → dir), and no-rectangle chrome. Prefer structural token checks over pixel-perfect spacing on row 2.
 
 ```go
 import "regexp"
@@ -167,6 +167,119 @@ func assertAgentHasFactKeys(t *testing.T, stdout string, keys ...string) {
 	}
 }
 
+// agentLeadingFacts returns the leading key: value facts block (lines before the
+// first blank line). Agent format prints id/title/stage/terminal/topic/dir here, then art.
+func agentLeadingFacts(stdout string) string {
+	plain := stripANSI(stdout)
+	var b strings.Builder
+	for _, line := range strings.Split(plain, "\n") {
+		if line == "" {
+			break
+		}
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// parseAgentFactValue returns the value for a leading whole-line key: value fact.
+func parseAgentFactValue(stdout, key string) (string, bool) {
+	plain := stripANSI(stdout)
+	re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + `\s*:\s*(.*?)\s*$`)
+	m := re.FindStringSubmatch(plain)
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
+
+// assertAgentFactKeyOrder checks fact keys appear in order as whole-line keys.
+func assertAgentFactKeyOrder(t *testing.T, stdout string, keys ...string) {
+	t.Helper()
+	plain := stripANSI(stdout)
+	pos := 0
+	for _, key := range keys {
+		re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + `\s*:`)
+		loc := re.FindStringIndex(plain[pos:])
+		if loc == nil {
+			t.Fatalf("expected fact key %q after earlier keys in order %v; stdout:\n%s",
+				key, keys, stdout)
+		}
+		pos += loc[1]
+	}
+}
+
+// assertAgentNoAltPathKeys fails if agent facts use path: or path_rel: instead of dir:.
+func assertAgentNoAltPathKeys(t *testing.T, stdout string) {
+	t.Helper()
+	plain := stripANSI(stdout)
+	for _, bad := range []string{"path", "path_rel"} {
+		re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(bad) + `\s*:`)
+		if re.MatchString(plain) {
+			t.Fatalf("agent facts must use dir: only, not %s:; stdout:\n%s", bad, stdout)
+		}
+	}
+}
+
+// agentInboxTopic is the locked topic: value for tasks with null topic_path (inbox).
+// Differs from tsk show, which prints "inbox" for uncategorized tasks.
+const agentInboxTopic = "(not classified yet)"
+
+// assertAgentTopicFact checks topic: is always present after terminal and before
+// dir, with the exact value (slash-joined path segments, or agentInboxTopic).
+func assertAgentTopicFact(t *testing.T, stdout, wantTopic string) {
+	t.Helper()
+	assertAgentHasFactKeys(t, stdout, "topic")
+	assertAgentFact(t, stdout, "topic", wantTopic)
+	assertAgentFactKeyOrder(t, stdout, "terminal", "topic", "dir")
+}
+
+// assertAgentDirFact checks dir: is present after topic in key order, value is
+// an absolute path, and it contains/suffix-matches the expected inbox relative
+// segment for id/stage/title (homes and temp roots vary — no full-string hardcode).
+// For topic-placed tasks, use assertAgentDirRel instead.
+func assertAgentDirFact(t *testing.T, stdout string, id int, stage, title string) {
+	t.Helper()
+	assertAgentDirRel(t, stdout, inboxTaskRel(id, stage, title))
+}
+
+// assertAgentDirRel checks dir: after topic, absolute, matching a relative segment
+// under TSK_HOME (e.g. inbox/… or topics/eng/backend/…).
+func assertAgentDirRel(t *testing.T, stdout, wantRelSlash string) {
+	t.Helper()
+	assertAgentHasFactKeys(t, stdout, "dir")
+	assertAgentFactKeyOrder(t, stdout, "topic", "dir")
+	assertAgentNoAltPathKeys(t, stdout)
+
+	dirVal, ok := parseAgentFactValue(stdout, "dir")
+	if !ok || dirVal == "" {
+		t.Fatalf("expected non-empty dir: fact in:\n%s", stdout)
+	}
+	if !filepath.IsAbs(dirVal) {
+		t.Fatalf("dir: value must be absolute path, got %q", dirVal)
+	}
+	dirSlash := filepath.ToSlash(dirVal)
+	if !strings.Contains(dirSlash, wantRelSlash) && !strings.HasSuffix(dirSlash, wantRelSlash) {
+		t.Fatalf("dir: %q must contain or suffix-match relative task path %q\nstdout:\n%s",
+			dirVal, wantRelSlash, stdout)
+	}
+}
+
+// assertAgentCoreFacts requires leading facts id, title, stage, terminal, topic, dir
+// with locked order id → title → stage → terminal → topic → dir.
+// Topic value is agentInboxTopic (inbox / null topic_path). Dir checked via inbox path.
+func assertAgentCoreFacts(t *testing.T, stdout string, id int, title, stage, terminal string) {
+	t.Helper()
+	idStr := fmt.Sprintf("%d", id)
+	assertAgentFact(t, stdout, "id", idStr)
+	assertAgentFact(t, stdout, "title", title)
+	assertAgentFact(t, stdout, "stage", stage)
+	assertAgentFact(t, stdout, "terminal", terminal)
+	assertAgentTopicFact(t, stdout, agentInboxTopic)
+	assertAgentFactKeyOrder(t, stdout, "id", "title", "stage", "terminal", "topic", "dir")
+	assertAgentDirFact(t, stdout, id, stage, title)
+}
+
 func assertAgentAdvanceOK(t *testing.T, stdout, advanceTo string) {
 	t.Helper()
 	assertAgentFact(t, stdout, "advance", "ok")
@@ -232,6 +345,15 @@ func ensureAgentHelpersUsed() {
 	_ = assertAgentPastBare
 	_ = assertAgentFact
 	_ = assertAgentHasFactKeys
+	_ = agentLeadingFacts
+	_ = parseAgentFactValue
+	_ = assertAgentFactKeyOrder
+	_ = assertAgentNoAltPathKeys
+	_ = agentInboxTopic
+	_ = assertAgentTopicFact
+	_ = assertAgentDirFact
+	_ = assertAgentDirRel
+	_ = assertAgentCoreFacts
 	_ = assertAgentAdvanceOK
 	_ = assertAgentAdvanceBlocked
 	_ = assertAgentNextMentions

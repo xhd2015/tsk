@@ -25,9 +25,10 @@ and append-only `events.jsonl` auditing.
 - **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`.
 - **topic mkdir** — creates topic directory tree under `topics/`.
 - **next** — stdout prints id of oldest `in_process` task by `created_at`, or empty stdout when none.
-- **status** — pipeline view of a task; flags `--format=diagram|agent` (default `diagram`), `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~34 col max, 3-line boxes with labels inside `│ … │` rows); semantic ANSI overlay (current=green bold, visited=grey, edge-into-current=orange). **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `stage`, `terminal`, `advance`/`next`); no ANSI even with `--color`; no rectangle chrome; no 36-col cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
+- **status** — pipeline view of a task; flags `--format=diagram|agent`, `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **Default format** when `--format` is absent and neither `--color` nor `--plain` is present: if `TSK_STATUS_FORMAT=agent|diagram` is set use that; else if an agent host is detected (`CODEX_THREAD_ID`, `PI_CODING_AGENT`, or parent/grandparent process name via lean `agentrunner.Detect`) use `agent`; else `diagram`. Precedence (highest first): `--format` present → that value; `--color` or `--plain` present → diagram; `TSK_STATUS_FORMAT`; detect → agent; else diagram. **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~34 col max, 3-line boxes with labels inside `│ … │` rows); semantic ANSI overlay (current=green bold, visited=grey, edge-into-current=orange). **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `title`, `stage`, `terminal`, `topic`, `dir` in that order, then after art `advance`/`next`); `title` is exact `task.json` create title (same key as `tsk show`); `topic` is always present above `dir:` — slash-joined `topic_path` segments (e.g. `eng/backend`) when set, or exactly `(not classified yet)` for inbox/null `topic_path` (differs from `tsk show`, which prints `topic: inbox`); `dir` is the absolute task directory path (from index + `TSK_HOME`; key `dir:` only — no `path`/`path_rel`); no ANSI even with `--color`; no rectangle chrome; no 36-col cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
 - **Request.Args** — CLI arguments passed to `tsk` (subcommand + flags + positionals).
 - **Request.TaskID** — task id for multi-step setups and assertions.
+- **Request.ExtraEnv** — optional `KEY=value` strings appended to the child `tsk` process env (after `tskEnv` strips host agent / format-override vars for stable defaults).
 - **Session fixtures** — doctest injects `DOCTEST_SESSION_ID`; `getTskBin` builds once per session to `{cache}/bin/tsk` with file lock across leaf processes.
 
 ## Tree Overview
@@ -66,6 +67,9 @@ tsk tests
 │   ├── fork-semantics/           # no followup vs questions rows; satisfied ► into done rail
 │   ├── agent/                    # --format=agent (2-row plain + facts)
 │   │   ├── spine/                # create: spine order, create[doing], facts, no boxes
+│   │   ├── title/                # facts title: exact create title; order id→…→topic→dir
+│   │   ├── dir/                  # facts dir: absolute task path after topic; no path_rel
+│   │   ├── topic/                # create --topic eng/backend → topic: eng/backend above dir
 │   │   ├── two-rows/             # back line refine+questions; no satisfied on art
 │   │   ├── marks-mid/            # implementation[doing]; past bare; future (name)
 │   │   ├── at-clarification/     # blocked advance; next clarify confirm
@@ -74,7 +78,16 @@ tsk tests
 │   │   ├── at-done/              # terminal true; done[doing]; advance blocked
 │   │   └── no-ansi/              # --format=agent --color → no ANSI
 │   ├── format-invalid/           # --format=nope → exit 1; stderr once
-│   └── help/                     # status --help documents --format
+│   ├── help/                     # status --help documents --format
+│   └── auto-format/              # bare status format auto-select (detect / TSK_STATUS_FORMAT / flags)
+│       ├── bare-human/           # no agent env → diagram (not agent facts)
+│       ├── env-codex/            # CODEX_THREAD_ID → agent
+│       ├── env-pi/               # PI_CODING_AGENT → agent
+│       ├── tsk-status-format-agent/    # TSK_STATUS_FORMAT=agent → agent
+│       ├── tsk-status-format-diagram/  # TSK_STATUS_FORMAT=diagram overrides CODEX → diagram
+│       ├── force-diagram-flag/   # CODEX + --format=diagram → diagram
+│       ├── force-plain-blocks-auto/    # CODEX + --plain → diagram, not agent
+│       └── force-color-blocks-auto/    # CODEX + --color → diagram, not agent facts
 ├── show/                         # tsk show
 │   └── basic/                    # metadata block for id
 ├── list/                         # tsk list
@@ -119,7 +132,10 @@ tsk tests
 | 31 | status/arrows | full diagram → ≥6 `▼`, branch `►`/`──►`, `◄──` refine, followup before `◉` |
 | 32 | status/edge-labels | full diagram → edge labels in correct order (claim, research, confirmed, questions, satisfied) |
 | 33 | status/fork-semantics | full diagram → no followup on horizontal branch; questions separate; satisfied has ►; no ╰──▼ on done |
-| 34 | status/agent/spine | `--format=agent` at create → spine order, `create[doing]`, facts, no rect chrome, no ANSI |
+| 34 | status/agent/spine | `--format=agent` at create → spine order, `create[doing]`, core facts (id/title/stage/terminal/topic/dir; inbox topic `(not classified yet)`), no rect chrome, no ANSI |
+| 44 | status/agent/title | create `"add dark mode"` → agent facts `title: add dark mode` after `id:` before `stage:`; order locked through `topic` → `dir` |
+| 45 | status/agent/dir | create `"add dark mode"` → agent facts `dir: <abs path>` after `topic:`; absolute; contains `inbox/<id>-create-add-dark-mode`; no `path`/`path_rel` |
+| 46 | status/agent/topic | `create --topic eng/backend "…"` → agent facts `topic: eng/backend` after `terminal:` before `dir:`; `dir` contains `topics/eng/backend/` |
 | 35 | status/agent/two-rows | agent art has `user_followup`/`refine`/`questions`; no `satisfied` on art |
 | 36 | status/agent/marks-mid | at implementation → `implementation[doing]`; past bare; future `(…)` |
 | 37 | status/agent/at-clarification | `clarification[doing]`; `advance: blocked`; next mentions clarify confirm |
@@ -129,6 +145,14 @@ tsk tests
 | 41 | status/agent/no-ansi | `--format=agent --color` → no `\x1b[` |
 | 42 | status/format-invalid | `--format=nope` → exit 1; single stderr line |
 | 43 | status/help | `status --help` documents `--format` |
+| 47 | status/auto-format/bare-human | bare `status` + cleared agent env → diagram (box art; no agent facts) |
+| 48 | status/auto-format/env-codex | `CODEX_THREAD_ID=t1` + bare `status` → agent (`id:`/`title:`/`topic:`/`dir:`) |
+| 49 | status/auto-format/env-pi | `PI_CODING_AGENT=1` + bare `status` → agent |
+| 50 | status/auto-format/tsk-status-format-agent | `TSK_STATUS_FORMAT=agent` + cleared host → agent |
+| 51 | status/auto-format/tsk-status-format-diagram | `TSK_STATUS_FORMAT=diagram` + CODEX → diagram (env overrides detect) |
+| 52 | status/auto-format/force-diagram-flag | CODEX + `--format=diagram` → diagram |
+| 53 | status/auto-format/force-plain-blocks-auto | CODEX + `--plain` → diagram/plain, not agent facts |
+| 54 | status/auto-format/force-color-blocks-auto | CODEX + `--color` → diagram (may ANSI), not agent facts |
 | 13 | show/basic | `tsk show <id>` → metadata block with title, stage, labels |
 | 14 | list/filter | `tsk list --stage create` → matching ids one per line |
 | 15 | events/append | `tsk create` → `events.jsonl` gains one audit line |
@@ -186,6 +210,9 @@ doctest test ./tests/status/arrows
 doctest test ./tests/status/edge-labels
 doctest test ./tests/status/agent
 doctest test ./tests/status/agent/spine
+doctest test ./tests/status/agent/title
+doctest test ./tests/status/agent/dir
+doctest test ./tests/status/agent/topic
 doctest test ./tests/status/agent/two-rows
 doctest test ./tests/status/agent/marks-mid
 doctest test ./tests/status/agent/at-clarification
@@ -195,6 +222,15 @@ doctest test ./tests/status/agent/at-done
 doctest test ./tests/status/agent/no-ansi
 doctest test ./tests/status/format-invalid
 doctest test ./tests/status/help
+doctest test ./tests/status/auto-format
+doctest test ./tests/status/auto-format/bare-human
+doctest test ./tests/status/auto-format/env-codex
+doctest test ./tests/status/auto-format/env-pi
+doctest test ./tests/status/auto-format/tsk-status-format-agent
+doctest test ./tests/status/auto-format/tsk-status-format-diagram
+doctest test ./tests/status/auto-format/force-diagram-flag
+doctest test ./tests/status/auto-format/force-plain-blocks-auto
+doctest test ./tests/status/auto-format/force-color-blocks-auto
 doctest test ./tests/show/basic
 doctest test ./tests/list/filter
 doctest test ./tests/events/append
@@ -224,7 +260,8 @@ type Request struct {
 	Topic    string
 	Labels   []string
 	Stage    string
-	Message  string // followup message body
+	Message  string   // followup message body
+	ExtraEnv []string // KEY=value injected into child tsk env (after tskEnv base strip)
 }
 
 type Response struct {

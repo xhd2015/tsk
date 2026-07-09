@@ -4,6 +4,8 @@
 
 ```
 # temp WorkRoot + {WorkRoot}/.tsk per leaf; session-cached tsk binary
+# tskEnv strips CODEX_THREAD_ID / PI_CODING_AGENT / TSK_STATUS_FORMAT from parent env
+# so bare `status` stays diagram-stable under host agents; leaves re-inject via ExtraEnv
 tsk <subcommand> -> stdout/stderr + filesystem side effects under TSK_HOME
 ```
 
@@ -12,10 +14,11 @@ tsk <subcommand> -> stdout/stderr + filesystem side effects under TSK_HOME
 - The tsk Go module root is two levels above the test tree (`github.com/xhd2015/tsk`).
 - Go toolchain is available on PATH.
 - Session cache: `{DOCTEST_FIXTURE_ROOT or ~/Library/Caches/doctest/fixtures}/{DOCTEST_SESSION_ID}/bin/tsk` (file-locked build).
+- Child env always clears host-agent detection and `TSK_STATUS_FORMAT` unless a leaf sets `Request.ExtraEnv`.
 
 ## Context
 
-Each leaf runs `tsk` with `TSK_HOME={WorkRoot}/.tsk` and `TSK_DATE=2026-07-09`. Helper `runTskCmd` runs additional CLI invocations during `Setup` chains. Per-leaf state is never shared across leaves.
+Each leaf runs `tsk` with `TSK_HOME={WorkRoot}/.tsk` and `TSK_DATE=2026-07-09`. Helper `runTskCmd` / `Run` use `tskEnv(req)`, which strips `CODEX_THREAD_ID`, `PI_CODING_AGENT`, and `TSK_STATUS_FORMAT` from the parent process environment so diagram leaves do not flaky-auto to agent when CI runs under Codex/Grok. Auto-format leaves re-inject those vars via `req.ExtraEnv` (`KEY=value`). Per-leaf state is never shared across leaves.
 
 ```go
 import (
@@ -155,11 +158,53 @@ func Setup(t *testing.T, req *Request) error {
 	return os.MkdirAll(req.TskHome, 0o755)
 }
 
+// tskEnvBaseDrop are env keys always stripped from the parent process env so
+// status auto-format does not flaky-select agent when CI runs under Codex/Grok/PI.
+// Leaves re-inject via Request.ExtraEnv (e.g. CODEX_THREAD_ID=t1).
+var tskEnvBaseDrop = map[string]struct{}{
+	"CODEX_THREAD_ID":   {},
+	"PI_CODING_AGENT":   {},
+	"TSK_STATUS_FORMAT": {},
+	"TSK_HOME":          {},
+	"TSK_DATE":          {},
+}
+
+func envKey(entry string) string {
+	if i := strings.IndexByte(entry, '='); i >= 0 {
+		return entry[:i]
+	}
+	return entry
+}
+
+func filterEnvKeys(env []string, drop map[string]struct{}) []string {
+	out := make([]string, 0, len(env))
+	for _, e := range env {
+		if _, ok := drop[envKey(e)]; ok {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+// tskEnv builds the child process environment: parent env minus host-agent and
+// format-override vars, plus isolated TSK_HOME/TSK_DATE, plus req.ExtraEnv.
+// ExtraEnv keys also replace any remaining parent values with the same name.
 func tskEnv(req *Request) []string {
-	return append(os.Environ(),
+	drop := make(map[string]struct{}, len(tskEnvBaseDrop)+len(req.ExtraEnv))
+	for k := range tskEnvBaseDrop {
+		drop[k] = struct{}{}
+	}
+	for _, e := range req.ExtraEnv {
+		drop[envKey(e)] = struct{}{}
+	}
+	env := filterEnvKeys(os.Environ(), drop)
+	env = append(env,
 		"TSK_HOME="+req.TskHome,
 		"TSK_DATE="+tskDate,
 	)
+	env = append(env, req.ExtraEnv...)
+	return env
 }
 
 func captureCommandOutput(cmd *exec.Cmd) (*Response, error) {
@@ -614,6 +659,9 @@ func ensureHelpersUsed() {
 	_ = fixtureSessionRoot
 	_ = sessionTskBin
 	_ = withFlock
+	_ = tskEnvBaseDrop
+	_ = envKey
+	_ = filterEnvKeys
 	_ = tskEnv
 	_ = captureCommandOutput
 	_ = runTskCmd

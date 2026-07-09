@@ -63,14 +63,19 @@ func statusHelp() string {
 
 Show stage pipeline for a task.
 
+Default format (when --format, --color, and --plain are all omitted):
+  agent           if host agent detected (CODEX_THREAD_ID, PI_CODING_AGENT, or parent process)
+  diagram         otherwise
+  Override with TSK_STATUS_FORMAT=agent|diagram (debug/testing).
+
 Formats:
-  diagram         compact hand-made pipeline art (default); --color/--plain apply
+  diagram         compact hand-made pipeline art; --color/--plain apply
   agent           2-row plain spine + facts; no ANSI, no boxes
 
 Flags:
-  --format FORMAT output format: diagram (default) or agent
-  --color         force ANSI highlight for diagram (default on TTY; ignored for agent)
-  --plain         ASCII boxes, no ANSI (diagram only)
+  --format FORMAT output format: diagram or agent (disables auto-detect)
+  --color         force diagram + ANSI highlight (default on TTY for diagram; ignored for agent)
+  --plain         force diagram; ASCII boxes, no ANSI
   -h, --help      show this help
 `
 }

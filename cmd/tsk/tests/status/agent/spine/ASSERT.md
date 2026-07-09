@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0; stderr empty; stdout ends with `\n`.
-- Facts: `id: <n>`, `stage: create`, `terminal: false`.
+- Facts: `id: <n>`, `title: <create title>`, `stage: create`, `terminal: false`, `topic: (not classified yet)`, `dir: <abs task dir>` in that order.
 - Spine row in fixed order: `create` → `in_process` → `clarification` → `implementation` → `verification` → `summary` → `done`, joined by `->`.
 - Current mark: `create[doing]`; later spine stages use future form `(name)`.
 - No rectangle chrome (`+---`, `│ stage │`, Unicode box corners).
@@ -31,10 +31,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		assertAgentFuture(t, resp.Stdout, stage)
 	}
 
-	idStr := fmt.Sprintf("%d", req.TaskID)
-	assertAgentFact(t, resp.Stdout, "id", idStr)
-	assertAgentFact(t, resp.Stdout, "stage", "create")
-	assertAgentFact(t, resp.Stdout, "terminal", "false")
+	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "create", "false")
 	assertAgentHasFactKeys(t, resp.Stdout, "advance")
 	assertAgentAdvanceOK(t, resp.Stdout, "in_process")
 }

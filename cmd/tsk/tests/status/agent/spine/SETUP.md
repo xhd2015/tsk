@@ -4,12 +4,12 @@
 
 ```
 tsk create -> tsk status --format=agent <id>
-# spine: create[doing] -> (in_process) -> … -> (done); facts id/stage/terminal
+# spine: create[doing] -> (in_process) -> … -> (done); facts id/title/stage/terminal/topic/dir
 ```
 
 ## Steps
 
-1. Create task only (stage `create`).
+1. Create task only (stage `create`, inbox).
 2. Run `tsk status --format=agent <id>`.
 
 ```go
