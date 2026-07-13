@@ -1,9 +1,9 @@
 # Scenario
 
-**Feature**: summary fork separates no-followup and questions branches; satisfied arrows into done rail
+**Feature**: summary fork separates no-followup and questions; satisfied is vertical; refine is left rail
 
 ```
-create -> tsk status --color <id> -> no followup on horizontal branch, questions on spine, satisfied has ►
+create -> tsk status --color <id> -> no followup on right rail, questions on spine, vertical satisfied, left refine
 ```
 
 ## Steps

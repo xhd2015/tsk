@@ -1,14 +1,4 @@
-package pipeline
-
-// UnicodeArt is the fixed compact pipeline diagram (max line width ~40, limit 42).
-//
-// Layout geometry:
-//   - ● center-aligned into create; create/in_process on the main spine
-//   - refine: left-rail from user_followup mid (└─refine───┤) up to clarification mid (┌─────────►│)
-//   - no followup: right-rail from summary mid (├─no followup──┐) down into done mid (│  done  │◄…┘)
-//   - satisfied: vertical spine label then ▼ into done
-//   - done → ◉ is a dead-end terminal (no connector under terminal to clarification)
-const UnicodeArt = `                    ●
+                    ●
                     │
                     ▼
                ╭────────╮
@@ -50,4 +40,3 @@ const UnicodeArt = `                    ●
               ╰───┬────╯
                   ▼
                   ◉
-`

@@ -25,7 +25,7 @@ and append-only `events.jsonl` auditing.
 - **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`.
 - **topic mkdir** — creates topic directory tree under `topics/`.
 - **next** — stdout prints id of oldest `in_process` task by `created_at`, or empty stdout when none.
-- **status** — pipeline view of a task; flags `--format=diagram|agent`, `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **Default format** when `--format` is absent and neither `--color` nor `--plain` is present: if `TSK_STATUS_FORMAT=agent|diagram` is set use that; else if an agent host is detected (`CODEX_THREAD_ID`, `PI_CODING_AGENT`, or parent/grandparent process name via lean `agentrunner.Detect`) use `agent`; else `diagram`. Precedence (highest first): `--format` present → that value; `--color` or `--plain` present → diagram; `TSK_STATUS_FORMAT`; detect → agent; else diagram. **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~34 col max, 3-line boxes with labels inside `│ … │` rows); semantic ANSI overlay (current=green bold, visited=grey, edge-into-current=orange). **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `title`, `stage`, `terminal`, `topic`, `dir` in that order, then after art `advance`/`next`); `title` is exact `task.json` create title (same key as `tsk show`); `topic` is always present above `dir:` — slash-joined `topic_path` segments (e.g. `eng/backend`) when set, or exactly `(not classified yet)` for inbox/null `topic_path` (differs from `tsk show`, which prints `topic: inbox`); `dir` is the absolute task directory path (from index + `TSK_HOME`; key `dir:` only — no `path`/`path_rel`); no ANSI even with `--color`; no rectangle chrome; no 36-col cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
+- **status** — pipeline view of a task; flags `--format=diagram|agent`, `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **Default format** when `--format` is absent and neither `--color` nor `--plain` is present: if `TSK_STATUS_FORMAT=agent|diagram` is set use that; else if an agent host is detected (`CODEX_THREAD_ID`, `PI_CODING_AGENT`, or parent/grandparent process name via lean `agentrunner.Detect`) use `agent`; else `diagram`. Precedence (highest first): `--format` present → that value; `--color` or `--plain` present → diagram; `TSK_STATUS_FORMAT`; detect → agent; else diagram. **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~40 col, 3-line boxes with labels inside mid-rows; tee borders `├`/`┤` OK on summary/user_followup); geometry: ●/create center-aligned on spine; **refine** left-rail from left mid of `user_followup` to left mid of `clarification` (no rail under done/◉); **no followup** right-rail from right mid of `summary` to right mid of `done`; **satisfied** vertical spine label under `user_followup` (no `satisfied►`); **done→◉** dead end; semantic ANSI overlay when colored (current=green bold, visited=grey, edge-into-current=orange). Exact art sealed by `status/diagram-golden` + `status/plain-golden` `expected.txt`. **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `title`, `stage`, `terminal`, `topic`, `dir` in that order, then after art `advance`/`next`); `title` is exact `task.json` create title (same key as `tsk show`); `topic` is always present above `dir:` — slash-joined `topic_path` segments (e.g. `eng/backend`) when set, or exactly `(not classified yet)` for inbox/null `topic_path` (differs from `tsk show`, which prints `topic: inbox`); `dir` is the absolute task directory path (from index + `TSK_HOME`; key `dir:` only — no `path`/`path_rel`); no ANSI even with `--color`; no rectangle chrome; no width cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
 - **Request.Args** — CLI arguments passed to `tsk` (subcommand + flags + positionals).
 - **Request.TaskID** — task id for multi-step setups and assertions.
 - **Request.ExtraEnv** — optional `KEY=value` strings appended to the child `tsk` process env (after `tskEnv` strips host agent / format-override vars for stable defaults).
@@ -55,16 +55,19 @@ tsk tests
 ├── followup/                     # tsk followup
 │   └── basic/                    # at summary → user_followup + context file
 ├── status/                       # tsk status (diagram | agent formats)
+│   ├── diagram-golden/           # --format=diagram exact stdout == expected.txt (unicode; no-followup rail aligned)
+│   ├── plain-golden/             # --plain exact stdout == expected.txt (ASCII; no-followup rail aligned)
+│   ├── color-box-only/           # --color at implementation: green on box; left refine │ outside box SGR
 │   ├── diagram/                  # clarification + --color → compact art + green highlight
 │   ├── at-create/                # create stage + │ create │ + green ANSI
 │   ├── at-done/                  # done stage + │ done │ + green ANSI
 │   ├── no-color-pipe/            # piped stdout → box chars, no ANSI
-│   ├── plain-ascii/              # --plain → ASCII + boxes, no ANSI
-│   ├── compact-width/            # every stdout line width ≤ 36
-│   ├── box-format/               # each stage has │ <stage> │ box row
-│   ├── arrows/                   # ▼ main flow, branch arrows, followup before ◉
+│   ├── plain-ascii/              # --plain → ASCII + boxes, no ANSI (soft; see plain-golden)
+│   ├── compact-width/            # every stdout line width ≤ 42 (~40 geometry)
+│   ├── box-format/               # each stage has box mid-row (tee borders OK)
+│   ├── arrows/                   # ▼ spine; left refine ►│ clarification; ◄ into done
 │   ├── edge-labels/              # claim/research/confirmed/questions/satisfied order
-│   ├── fork-semantics/           # no followup vs questions rows; satisfied ► into done rail
+│   ├── fork-semantics/           # no followup vs questions; vertical satisfied; left refine
 │   ├── agent/                    # --format=agent (2-row plain + facts)
 │   │   ├── spine/                # create: spine order, create[doing], facts, no boxes
 │   │   ├── title/                # facts title: exact create title; order id→…→topic→dir
@@ -122,16 +125,19 @@ tsk tests
 | 9 | next/oldest | two `in_process` tasks → stdout = older id |
 | 10 | done/from-summary | at summary → `tsk done` → stage done, dir renamed |
 | 11 | followup/basic | at summary → `tsk followup` → `user_followup` + `context/followup-*.md` |
-| 12 | status/diagram | at clarification + `--color` → compact box art, `│ clarification │`, width ≤ 36, edge labels `refine`/`confirmed`, green on clarification |
+| 12 | status/diagram | at clarification + `--color` → compact box art, `│ clarification │`, edge labels `refine`/`confirmed`, green on clarification (geometry sealed by diagram-golden) |
+| 55 | status/diagram-golden | `--format=diagram` (no color) → stdout byte-equal to unicode `expected.txt`; no-followup `┐`/`│`/`┘` same column |
+| 56 | status/plain-golden | `--plain` → stdout byte-equal to ASCII `expected.txt`; no-followup `+`/`|`/`+` same column |
+| 57 | status/color-box-only | at implementation + `--color` → green on box; leading left-rail `│` outside box SGR |
 | 25 | status/at-create | create only + `status --color` → `│ create │` with green ANSI |
 | 26 | status/at-done | at done + `status --color` → `│ done │` with green ANSI |
 | 27 | status/no-color-pipe | clarification, piped → `│ clarification │`, box chars, no ANSI |
-| 28 | status/plain-ascii | `status --plain` → `| create |` or `+` ASCII boxes, no ANSI |
-| 29 | status/compact-width | full diagram → every stdout line rune width ≤ 36 |
-| 30 | status/box-format | full diagram → each stage has `│ <stage> │` (or ascii `| <stage> |`) box row |
-| 31 | status/arrows | full diagram → ≥6 `▼`, branch `►`/`──►`, `◄──` refine, followup before `◉` |
-| 32 | status/edge-labels | full diagram → edge labels in correct order (claim, research, confirmed, questions, satisfied) |
-| 33 | status/fork-semantics | full diagram → no followup on horizontal branch; questions separate; satisfied has ►; no ╰──▼ on done |
+| 28 | status/plain-ascii | `status --plain` → `| create |` or `+` ASCII boxes, no ANSI (soft; plain-golden exact) |
+| 29 | status/compact-width | full diagram → every stdout line rune width ≤ 42 |
+| 30 | status/box-format | full diagram → each stage has box mid-row (tee borders/padding OK) |
+| 31 | status/arrows | full diagram → ≥6 `▼`, `►│ clarification` + `└─refine`, `◄` into done, followup before `◉` |
+| 32 | status/edge-labels | full diagram → edge labels in correct order (claim, research, confirmed, questions, vertical satisfied) |
+| 33 | status/fork-semantics | full diagram → no followup vs questions; vertical satisfied (no satisfied►); left refine; done dead end |
 | 34 | status/agent/spine | `--format=agent` at create → spine order, `create[doing]`, core facts (id/title/stage/terminal/topic/dir; inbox topic `(not classified yet)`), no rect chrome, no ANSI |
 | 44 | status/agent/title | create `"add dark mode"` → agent facts `title: add dark mode` after `id:` before `stage:`; order locked through `topic` → `dir` |
 | 45 | status/agent/dir | create `"add dark mode"` → agent facts `dir: <abs path>` after `topic:`; absolute; contains `inbox/<id>-create-add-dark-mode`; no `path`/`path_rel` |
@@ -199,6 +205,9 @@ doctest test ./tests/topic/set-to-topic
 doctest test ./tests/next/oldest
 doctest test ./tests/done/from-summary
 doctest test ./tests/followup/basic
+doctest test ./tests/status/diagram-golden
+doctest test ./tests/status/plain-golden
+doctest test ./tests/status/color-box-only
 doctest test ./tests/status/diagram
 doctest test ./tests/status/at-create
 doctest test ./tests/status/at-done
@@ -208,6 +217,7 @@ doctest test ./tests/status/compact-width
 doctest test ./tests/status/box-format
 doctest test ./tests/status/arrows
 doctest test ./tests/status/edge-labels
+doctest test ./tests/status/fork-semantics
 doctest test ./tests/status/agent
 doctest test ./tests/status/agent/spine
 doctest test ./tests/status/agent/title

@@ -1,6 +1,6 @@
 ## Expected Output
 
-Compact pipeline at `clarification` with `│ clarification │` inside a 3-line box. Max line width ≤ 36. Edge labels `refine` and `confirmed` present. Green ANSI on the clarification line. No mermaid `stateDiagram` output.
+Compact pipeline at `clarification` with `│ clarification │` inside a 3-line box. Edge labels `refine` and `confirmed` present. Green ANSI on the clarification line. No mermaid `stateDiagram` output. Full geometry sealed by `status/diagram-golden` (exact stdout); this leaf only checks color + presence.
 
 ## Expected
 
@@ -8,7 +8,6 @@ Compact pipeline at `clarification` with `│ clarification │` inside a 3-line
 - Stdout non-empty, ends with `\n`.
 - Compact box art (`╭`); not mermaid-wide lines.
 - `│ clarification │` box line exists.
-- Every stdout line width ≤ 36.
 - Stdout contains stages: `create`, `in_process`, `clarification`, `implementation`, `verification`, `summary`, `user_followup`, `done`.
 - Stdout contains edge labels `refine` and `confirmed`.
 - Line containing `clarification` includes green ANSI `\x1b[32m`.
@@ -29,7 +28,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertCompactBoxArt(t, resp.Stdout)
 	assertNotMermaidWide(t, resp.Stdout)
 	assertBoxLineForStage(t, resp.Stdout, "clarification")
-	assertMaxWidth36(t, resp.Stdout)
 	assertStdoutHasStages(t, resp.Stdout,
 		"create", "in_process", "clarification", "implementation",
 		"verification", "summary", "user_followup", "done",

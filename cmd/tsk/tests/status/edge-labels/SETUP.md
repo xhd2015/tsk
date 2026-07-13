@@ -3,7 +3,7 @@
 **Feature**: edge labels sit on correct transitions in the compact pipeline
 
 ```
-create -> tsk status --color <id> -> claim, research, confirmed, questions, satisfied in order
+create -> tsk status --color <id> -> claim, research, confirmed, questions, vertical satisfied in order
 ```
 
 ## Steps

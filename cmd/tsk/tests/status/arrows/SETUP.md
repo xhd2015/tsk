@@ -1,9 +1,9 @@
 # Scenario
 
-**Feature**: compact pipeline uses directional arrows on main flow and summary fork
+**Feature**: compact pipeline uses directional arrows — main ▼ spine, left refine, right no-followup
 
 ```
-create -> tsk status --color <id> -> full diagram with ▼ main flow, branch arrows, refine loop
+create -> tsk status --color <id> -> ▼ main flow, ► into clarification (refine), ◄ into done (no followup)
 ```
 
 ## Steps

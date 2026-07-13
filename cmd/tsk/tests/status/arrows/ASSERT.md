@@ -2,9 +2,11 @@
 
 - Exit code 0.
 - Stdout contains at least 6 `▼` downward-flow arrows.
-- Stdout contains `►` or `──►` (summary→done branch).
-- Stdout contains `◄──` (refine loop on clarification).
+- Refine ends at **left mid** of clarification: `►│ clarification`.
+- Refine starts at **left mid** of user_followup: `└─refine`.
+- No-followup ends at **right mid** of done: line contains done box and `◄`.
 - `user_followup` appears before terminal `◉`; no orphan `user_followup` box after `◉`.
+- Exact geometry sealed by `status/diagram-golden`.
 - Stderr empty.
 
 ## Exit Code
@@ -20,10 +22,13 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	}
 
 	assertContainsArrowDown(t, resp.Stdout, 6)
-	if !strings.Contains(resp.Stdout, "►") && !strings.Contains(resp.Stdout, "──►") {
-		t.Fatalf("expected ► or ──► branch arrow in stdout:\n%s", resp.Stdout)
+	// New geometry: refine enters clarification from the left (not old right-rail ◄──).
+	assertContains(t, resp.Stdout, "►│ clarification")
+	assertContains(t, resp.Stdout, "└─refine")
+	// no-followup enters done from the right
+	if !strings.Contains(resp.Stdout, "◄") {
+		t.Fatalf("expected ◄ into done (no-followup rail) in stdout:\n%s", resp.Stdout)
 	}
-	assertContains(t, resp.Stdout, "◄──")
 	assertFollowupBeforeTerminal(t, resp.Stdout)
 }
 ```

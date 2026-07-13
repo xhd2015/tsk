@@ -1,6 +1,6 @@
 # Scenario
 
-**Feature**: compact pipeline respects max line width of 36 columns
+**Feature**: compact pipeline stays within soft width cap (~40 cols; goldens are source of truth)
 
 ```
 create -> advance x2 (clarification) -> tsk status --color <id>

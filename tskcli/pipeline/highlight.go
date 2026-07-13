@@ -155,8 +155,121 @@ func colorBoxLines(lines []string, start, end int, prefix string) {
 		if strings.TrimSpace(lines[i]) == "" {
 			continue
 		}
-		lines[i] = prefix + lines[i] + ansiReset
+		spanStart, spanEnd, ok := stageBoxSpan(lines[i])
+		if !ok {
+			// Fallback: avoid coloring if we cannot isolate the box.
+			continue
+		}
+		line := lines[i]
+		lines[i] = line[:spanStart] + prefix + line[spanStart:spanEnd] + ansiReset + line[spanEnd:]
 	}
+}
+
+// stageBoxSpan returns the byte range [start, end) of the stage box on a line,
+// excluding leading left-rail and trailing right-rail connectors.
+func stageBoxSpan(line string) (start, end int, ok bool) {
+	if i := strings.Index(line, "╭"); i >= 0 {
+		if j := strings.Index(line[i:], "╮"); j >= 0 {
+			return i, i + j + len("╮"), true
+		}
+	}
+	if i := strings.Index(line, "╰"); i >= 0 {
+		if j := strings.Index(line[i:], "╯"); j >= 0 {
+			return i, i + j + len("╯"), true
+		}
+	}
+
+	if stage := stageNameInBoxLine(line); stage != "" {
+		if s, e, found := midBoxSpan(line, stage); found {
+			return s, e, true
+		}
+	}
+
+	if s, e, found := asciiBoxChromeSpan(line); found {
+		return s, e, true
+	}
+	return 0, 0, false
+}
+
+func midBoxSpan(line, stage string) (start, end int, ok bool) {
+	runes := []rune(line)
+	stageRunes := []rune(stage)
+	nameAt := -1
+	for i := 0; i <= len(runes)-len(stageRunes); i++ {
+		match := true
+		for k := 0; k < len(stageRunes); k++ {
+			if runes[i+k] != stageRunes[k] {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		// Prefer a boxed occurrence (spaces/walls around the stage name).
+		leftOK := i == 0 || runes[i-1] == ' ' || isBoxWall(runes[i-1])
+		right := i + len(stageRunes)
+		rightOK := right >= len(runes) || runes[right] == ' ' || isBoxWall(runes[right])
+		if leftOK && rightOK {
+			nameAt = i
+			// Keep scanning so the last boxed match wins (mirrors stageNameInBoxLine).
+		}
+	}
+	if nameAt < 0 {
+		return 0, 0, false
+	}
+
+	left := nameAt - 1
+	for left >= 0 && runes[left] == ' ' {
+		left--
+	}
+	if left < 0 || !isBoxWall(runes[left]) {
+		return 0, 0, false
+	}
+
+	right := nameAt + len(stageRunes)
+	for right < len(runes) && runes[right] == ' ' {
+		right++
+	}
+	if right >= len(runes) || !isBoxWall(runes[right]) {
+		return 0, 0, false
+	}
+
+	start = len(string(runes[:left]))
+	end = len(string(runes[:right+1]))
+	return start, end, true
+}
+
+func isBoxWall(r rune) bool {
+	switch r {
+	case '│', '┤', '├', '|', '+':
+		return true
+	default:
+		return false
+	}
+}
+
+// asciiBoxChromeSpan finds a top/bottom ASCII box border (+-+ / +--+--+).
+func asciiBoxChromeSpan(line string) (start, end int, ok bool) {
+	runes := []rune(line)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] != '+' {
+			continue
+		}
+		if i+1 >= len(runes) || runes[i+1] != '-' {
+			continue
+		}
+		j := i + 1
+		for j < len(runes) && (runes[j] == '-' || runes[j] == '+') {
+			j++
+		}
+		if j-1 > i && runes[j-1] == '+' {
+			start = len(string(runes[:i]))
+			end = len(string(runes[:j]))
+			return start, end, true
+		}
+	}
+	return 0, 0, false
 }
 
 func edgeLineAboveBox(lines []string, boxStart int) int {

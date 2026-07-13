@@ -1,19 +1,15 @@
 ## Expected Output
 
-Leading facts block (before blank line / art):
+Leading facts block (before blank line / art). Template uses runtime-exact `dir:`
+(not `__DIR__ type=string` — assert-mod non-greedy string placeholder bug).
 
 ```
----
-version: 2
-__ID__: type=number, example=1, task id from create
-__DIR__: type=string, example=/tmp/work/.tsk/inbox/1-create-add-dark-mode, absolute task dir
----
-id: __ID__
+id: <number>
 title: add dark mode
 stage: create
 terminal: false
 topic: (not classified yet)
-dir: __DIR__
+dir: <exact absolute path from stdout>
 ```
 
 ## Expected
@@ -42,19 +38,8 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertAgentNoRectChrome(t, resp.Stdout)
 	assertAgentSpineOrder(t, resp.Stdout)
 
-	// Strict leading facts block: id → title → stage → terminal → topic → dir
-	assert.Output(t, agentLeadingFacts(resp.Stdout), `---
-version: 2
-__ID__: type=number, example=1, task id from create
-__DIR__: type=string, example=/tmp/work/.tsk/inbox/1-create-add-dark-mode, absolute task dir
----
-id: __ID__
-title: add dark mode
-stage: create
-terminal: false
-topic: (not classified yet)
-dir: __DIR__
-`)
+	// Strict leading facts block; dir: literal from stdout (Option A)
+	assertAgentLeadingFactsShape(t, resp.Stdout, "add dark mode", "create", "false", agentInboxTopic)
 
 	// Cross-check helpers (value + key order) against full stdout
 	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "create", "false")

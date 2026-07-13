@@ -1,19 +1,15 @@
 ## Expected Output
 
-Leading facts block (before blank line / art):
+Leading facts block (before blank line / art). Template uses runtime-exact `dir:`
+(not `__DIR__ type=string` — assert-mod non-greedy string placeholder bug).
 
 ```
----
-version: 2
-__ID__: type=number, example=1, task id from create
-__DIR__: type=string, example=/tmp/work/.tsk/inbox/1-create-add-dark-mode, absolute task dir
----
-id: __ID__
+id: <number>
 title: add dark mode
 stage: create
 terminal: false
 topic: (not classified yet)
-dir: __DIR__
+dir: <exact absolute path from stdout>
 ```
 
 ## Expected
@@ -24,7 +20,7 @@ dir: __DIR__
 - `dir:` value is an **absolute** filesystem path to the task directory.
 - Path contains or ends with `inbox/<id>-create-add-dark-mode` (stage segment in dir name).
 - Key is `dir:` only — no `path:` or `path_rel:`.
-- Homes / temp roots vary: assert via absolute check + contains/suffix, not a hardcoded full path string in equality against a fixed home.
+- Homes / temp roots vary: `assert.Output` uses exact stdout `dir:` as a literal line; Go checks abs + suffix + on-disk equality.
 
 ## Exit Code
 
@@ -41,19 +37,8 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertAgentNoANSI(t, resp)
 	assertAgentNoRectChrome(t, resp.Stdout)
 
-	// Strict leading facts shape: id → title → stage → terminal → topic → dir
-	assert.Output(t, agentLeadingFacts(resp.Stdout), `---
-version: 2
-__ID__: type=number, example=1, task id from create
-__DIR__: type=string, example=/tmp/work/.tsk/inbox/1-create-add-dark-mode, absolute task dir
----
-id: __ID__
-title: add dark mode
-stage: create
-terminal: false
-topic: (not classified yet)
-dir: __DIR__
-`)
+	// Strict leading facts shape; dir: literal from stdout (Option A)
+	assertAgentLeadingFactsShape(t, resp.Stdout, "add dark mode", "create", "false", agentInboxTopic)
 
 	// Core fact values + locked order including topic before dir
 	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "create", "false")

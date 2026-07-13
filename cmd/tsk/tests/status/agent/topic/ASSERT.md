@@ -1,19 +1,15 @@
 ## Expected Output
 
-Leading facts block (before blank line / art):
+Leading facts block (before blank line / art). Template uses runtime-exact `dir:`
+(not `__DIR__ type=string` — assert-mod non-greedy string placeholder bug).
 
 ```
----
-version: 2
-__ID__: type=number, example=1, task id from create
-__DIR__: type=string, example=/tmp/work/.tsk/topics/eng/backend/1-create-topic-status-fact, absolute topic task dir
----
-id: __ID__
+id: <number>
 title: topic status fact
 stage: create
 terminal: false
 topic: eng/backend
-dir: __DIR__
+dir: <exact absolute path from stdout>
 ```
 
 ## Expected
@@ -41,19 +37,8 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertAgentNoANSI(t, resp)
 	assertAgentNoRectChrome(t, resp.Stdout)
 
-	// Strict leading facts: id → title → stage → terminal → topic → dir
-	assert.Output(t, agentLeadingFacts(resp.Stdout), `---
-version: 2
-__ID__: type=number, example=1, task id from create
-__DIR__: type=string, example=/tmp/work/.tsk/topics/eng/backend/1-create-topic-status-fact, absolute topic task dir
----
-id: __ID__
-title: topic status fact
-stage: create
-terminal: false
-topic: eng/backend
-dir: __DIR__
-`)
+	// Strict leading facts; dir: literal from stdout (Option A)
+	assertAgentLeadingFactsShape(t, resp.Stdout, "topic status fact", "create", "false", "eng/backend")
 
 	idStr := fmt.Sprintf("%d", req.TaskID)
 	assertAgentFact(t, resp.Stdout, "id", idStr)

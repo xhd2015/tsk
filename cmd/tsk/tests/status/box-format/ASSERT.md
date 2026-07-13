@@ -1,7 +1,8 @@
 ## Expected
 
 - Exit code 0.
-- Each workflow stage has a middle box row matching `│ <stage> │` (unicode) or `| <stage> |` (ascii).
+- Each workflow stage has a middle box row with the stage label between box/tee borders
+  (`│`/`┤` … `│`/`├`, or ASCII `|`/`+` variants; padding spaces allowed e.g. `│  done  │`).
 - Stages: `create`, `in_process`, `clarification`, `implementation`, `verification`, `summary`, `user_followup`, `done`.
 - Stderr empty.
 

@@ -4,15 +4,18 @@
 
 ```
 # flags --format=diagram|agent, --color, --plain; auto agent when host detected and no format flags
-# diagram (default outside agents): compact art (~34 col max, 3-line boxes) + optional ANSI
+# diagram (default outside agents): compact art (~40 col, 3-line boxes) + optional ANSI
 # agent: 2-row plain spine + back line + facts (id/title/stage/terminal/topic/dir); no ANSI, no boxes
 # auto: bare status + detect/TSK_STATUS_FORMAT → agent; --format/--color/--plain always win
+# geometry (diagram): left-rail refine; right-rail no-followup (┐/│/┘ same col); vertical satisfied; done→◉ dead end
+# highlight: color only stage box span — left refine rail outside box SGR (see color-box-only)
+# golden: status/diagram-golden + status/plain-golden expected.txt exact stdout
 tsk status [--format=diagram|agent] [--color] [--plain] <id> -> pipeline view on stdout
 ```
 
 ## Context
 
-Shared helpers for box-line assertions, width limits, ANSI checks, and advancing to terminal `done`. Agent-format helpers live under `status/agent/SETUP.md`. Auto-format selection leaves live under `status/auto-format/` (inject host env via `ExtraEnv`; root `tskEnv` clears agent vars for stable diagram defaults).
+Shared helpers for box-line assertions, width limits, ANSI checks, golden stdout files, no-followup rail column alignment, box-only highlight, and advancing to terminal `done`. Agent-format helpers live under `status/agent/SETUP.md`. Auto-format selection leaves live under `status/auto-format/` (inject host env via `ExtraEnv`; root `tskEnv` clears agent vars for stable diagram defaults). Exact diagram geometry is sealed by `diagram-golden` / `plain-golden` `expected.txt` fixtures.
 
 ```go
 import "regexp"
@@ -43,29 +46,53 @@ func maxLineWidth(s string) int {
 	return max
 }
 
-func assertMaxWidth36(t *testing.T, stdout string) {
+func assertMaxWidth(t *testing.T, stdout string, max int) {
 	t.Helper()
 	for i, line := range strings.Split(stdout, "\n") {
 		if line == "" {
 			continue
 		}
 		w := len([]rune(stripANSI(line)))
-		if w > 36 {
-			t.Fatalf("line %d visible width %d exceeds 36: %q", i+1, w, stripANSI(line))
+		if w > max {
+			t.Fatalf("line %d visible width %d exceeds %d: %q", i+1, w, max, stripANSI(line))
 		}
 	}
 }
 
+// assertMaxWidth42: new geometry is ~40 cols (was 36); soft cap only — goldens are source of truth.
+func assertMaxWidth42(t *testing.T, stdout string) {
+	t.Helper()
+	assertMaxWidth(t, stdout, 42)
+}
+
+func isStageBoxMidRow(line, stage string) bool {
+	plain := stripANSI(line)
+	u := regexp.MustCompile(`[│┤]\s*` + regexp.QuoteMeta(stage) + `\s*[│├]`)
+	a := regexp.MustCompile(`[|+]\s*` + regexp.QuoteMeta(stage) + `\s*[|+]`)
+	return u.MatchString(plain) || a.MatchString(plain)
+}
+
 func assertBoxLineForStage(t *testing.T, stdout, stage string) {
 	t.Helper()
-	unicodeBox := "│ " + stage + " │"
-	asciiBox := "| " + stage + " |"
 	for _, line := range strings.Split(stdout, "\n") {
-		if strings.Contains(line, unicodeBox) || strings.Contains(line, asciiBox) {
+		if isStageBoxMidRow(line, stage) {
 			return
 		}
 	}
-	t.Fatalf("expected box line for stage %q (│ %s │ or | %s |) in:\n%s", stage, stage, stage, stdout)
+	t.Fatalf("expected box mid-row for stage %q (│/┤ %s │/├ or ASCII) in:\n%s", stage, stage, stdout)
+}
+
+func assertStdoutEqualsFile(t *testing.T, stdout, relPath string) {
+	t.Helper()
+	data, err := os.ReadFile(relPath)
+	if err != nil {
+		t.Fatalf("read golden %s: %v", relPath, err)
+	}
+	want := string(data)
+	if stdout != want {
+		t.Fatalf("stdout != %s\n--- got (%d bytes) ---\n%s\n--- want (%d bytes) ---\n%s",
+			relPath, len(stdout), stdout, len(want), want)
+	}
 }
 
 func assertNoANSI(t *testing.T, s string) {
@@ -91,6 +118,143 @@ func assertStageLineHasGreen(t *testing.T, stdout, stage string) {
 		}
 	}
 	t.Fatalf("expected green ANSI (\\x1b[32m) on line containing %q:\n%s", stage, stdout)
+}
+
+// lastRuneIndex returns the last index of r in s, or -1.
+func lastRuneIndex(s string, r rune) int {
+	runes := []rune(s)
+	for i := len(runes) - 1; i >= 0; i-- {
+		if runes[i] == r {
+			return i
+		}
+	}
+	return -1
+}
+
+// assertNoFollowupRailAligned checks that the no-followup right rail is column-aligned:
+// corner ┐ (or ASCII + after "no followup"), vertical │/| on intervening lines, and
+// done-mid join ┘ (or ASCII +) share the same column.
+func assertNoFollowupRailAligned(t *testing.T, stdout string) {
+	t.Helper()
+	lines := stdoutLines(stdout)
+	cornerCol := -1
+	joinCol := -1
+	cornerLine := -1
+	joinLine := -1
+
+	for i, line := range lines {
+		plain := stripANSI(line)
+		if strings.Contains(plain, "no followup") {
+			// unicode ┐ or plain trailing + on the horizontal branch
+			col := lastRuneIndex(plain, '┐')
+			if col < 0 {
+				col = lastRuneIndex(plain, '+')
+			}
+			if col < 0 {
+				t.Fatalf("no-followup line missing corner ┐/+: %q", plain)
+			}
+			cornerCol = col
+			cornerLine = i
+		}
+		if isStageBoxMidRow(line, "done") {
+			col := lastRuneIndex(plain, '┘')
+			if col < 0 {
+				col = lastRuneIndex(plain, '+')
+			}
+			if col < 0 {
+				t.Fatalf("done mid missing join ┘/+: %q", plain)
+			}
+			joinCol = col
+			joinLine = i
+		}
+	}
+	if cornerCol < 0 {
+		t.Fatalf("missing no-followup corner ┐/+ in:\n%s", stdout)
+	}
+	if joinCol < 0 {
+		t.Fatalf("missing done mid join ┘/+ in:\n%s", stdout)
+	}
+	if cornerCol != joinCol {
+		t.Fatalf("no-followup rail misaligned: corner col %d (line %d) != done join col %d (line %d):\n%s",
+			cornerCol, cornerLine+1, joinCol, joinLine+1, stdout)
+	}
+
+	// vertical right-rail cells between corner and done mid
+	for i := cornerLine + 1; i < joinLine; i++ {
+		plain := stripANSI(lines[i])
+		runes := []rune(plain)
+		if len(runes) <= cornerCol {
+			t.Fatalf("right-rail line %d shorter than corner col %d: %q", i+1, cornerCol, plain)
+		}
+		r := runes[cornerCol]
+		if r != '│' && r != '|' {
+			t.Fatalf("expected right rail │/| at col %d on line %d, got %q: %q",
+				cornerCol, i+1, string(r), plain)
+		}
+	}
+}
+
+// firstVisibleUnderActiveSGR reports whether the first non-ANSI content rune of line
+// is reached while an SGR color/style is already active (whole-line coloring).
+func firstVisibleUnderActiveSGR(line string) bool {
+	active := false
+	for i := 0; i < len(line); {
+		if line[i] == '\x1b' && i+1 < len(line) && line[i+1] == '[' {
+			j := i + 2
+			for j < len(line) && ((line[j] >= '0' && line[j] <= '9') || line[j] == ';') {
+				j++
+			}
+			if j >= len(line) || line[j] != 'm' {
+				return active // malformed; treat conservatively
+			}
+			code := line[i+2 : j]
+			if code == "0" || code == "" {
+				active = false
+			} else {
+				// any non-reset SGR (bold, green, grey, …)
+				active = true
+			}
+			i = j + 1
+			continue
+		}
+		// first visible content
+		return active
+	}
+	return false
+}
+
+// stageBoxMidLine returns the raw (possibly ANSI) mid-row line for stage, or "".
+func stageBoxMidLine(stdout, stage string) string {
+	for _, line := range strings.Split(stdout, "\n") {
+		if isStageBoxMidRow(line, stage) {
+			return line
+		}
+	}
+	return ""
+}
+
+// assertBoxColoredLeftRailClear: current stage box still has green on the stage
+// mid-row, but the leading left refine-rail │ must not sit inside the same SGR
+// span as the box (whole-line colorBoxLines is the bug).
+func assertBoxColoredLeftRailClear(t *testing.T, stdout, stage string) {
+	t.Helper()
+	line := stageBoxMidLine(stdout, stage)
+	if line == "" {
+		t.Fatalf("expected box mid-row for stage %q in:\n%s", stage, stdout)
+	}
+	if !strings.Contains(line, "\x1b[32m") {
+		t.Fatalf("expected green ANSI (\\x1b[32m) on %q box mid-row:\n%s", stage, line)
+	}
+	plain := stripANSI(line)
+	// stages that share the left refine rail begin with │ (unicode) or | (plain)
+	if !strings.HasPrefix(strings.TrimLeft(plain, " \t"), "│") &&
+		!strings.HasPrefix(strings.TrimLeft(plain, " \t"), "|") {
+		t.Fatalf("expected stage %q mid-row to start with left refine rail │/|, got %q", stage, plain)
+	}
+	if firstVisibleUnderActiveSGR(line) {
+		t.Fatalf("left-rail │ must not be inside box SGR on stage %q mid-row (whole-line color is wrong):\n%q\nfull:\n%s",
+			stage, line, stdout)
+	}
 }
 
 func assertCompactBoxArt(t *testing.T, stdout string) {
@@ -197,9 +361,12 @@ func lastLineIndexContaining(lines []string, substr string) int {
 }
 
 func boxLineIndex(lines []string, stage string) int {
-	unicodeBox := "│ " + stage + " │"
-	asciiBox := "| " + stage + " |"
-	return firstLineIndexContaining(lines, unicodeBox, asciiBox)
+	for i, line := range lines {
+		if isStageBoxMidRow(line, stage) {
+			return i
+		}
+	}
+	return -1
 }
 
 func assertEdgeLabelOrder(t *testing.T, stdout string) {
@@ -251,8 +418,9 @@ func assertEdgeLabelOrder(t *testing.T, stdout string) {
 		t.Fatalf("satisfied should not appear before verification (verification %d, satisfied %d):\n%s",
 			verificationBox+1, satisfied+1, stdout)
 	}
-	if satisfied < followupBox-1 {
-		t.Fatalf("satisfied should appear near user_followup→done merge (followup %d, satisfied %d):\n%s",
+	// vertical satisfied sits below user_followup (toward done), not on/above the followup box
+	if satisfied <= followupBox {
+		t.Fatalf("satisfied should appear below user_followup box (followup %d, satisfied %d):\n%s",
 			followupBox+1, satisfied+1, stdout)
 	}
 }
@@ -263,11 +431,19 @@ func assertForkSemantics(t *testing.T, stdout string) {
 	if !strings.Contains(plain, "no followup") {
 		t.Fatalf("expected no followup label on summary→done branch in:\n%s", stdout)
 	}
+	if !strings.Contains(plain, "refine") {
+		t.Fatalf("expected refine label on user_followup→clarification loop in:\n%s", stdout)
+	}
 	for i, line := range stdoutLines(stdout) {
 		p := stripANSI(line)
 		if strings.Contains(p, "no followup") && strings.Contains(p, "questions") {
 			t.Fatalf("no followup and questions must not share a line (line %d): %q", i+1, p)
 		}
+	}
+	// satisfied is a vertical spine label (like claim), not a sideways satisfied► decoration
+	if strings.Contains(plain, "satisfied►") || strings.Contains(plain, "satisfied>") ||
+		strings.Contains(plain, "-satisfied>") || strings.Contains(plain, "─satisfied►") {
+		t.Fatalf("satisfied must not use sideways branch decoration (satisfied►); got:\n%s", stdout)
 	}
 	satisfiedLine := ""
 	for _, line := range stdoutLines(stdout) {
@@ -279,11 +455,32 @@ func assertForkSemantics(t *testing.T, stdout string) {
 	if satisfiedLine == "" {
 		t.Fatalf("missing satisfied label in:\n%s", stdout)
 	}
-	if !strings.Contains(satisfiedLine, "►") && !strings.Contains(satisfiedLine, ">") {
-		t.Fatalf("satisfied merge should include branch arrow (► or >), got %q in:\n%s", satisfiedLine, stdout)
+	// vertical label sits on spine (│ or |) with the word satisfied — no horizontal arrow on that line
+	if strings.Contains(satisfiedLine, "►") || strings.Contains(satisfiedLine, ">") {
+		t.Fatalf("satisfied line should be vertical spine label without ►/>, got %q in:\n%s", satisfiedLine, stdout)
+	}
+	if !strings.Contains(satisfiedLine, "│") && !strings.Contains(satisfiedLine, "|") {
+		t.Fatalf("satisfied should sit on vertical spine (│ or |), got %q in:\n%s", satisfiedLine, stdout)
 	}
 	if strings.Contains(plain, "╰──▼") {
 		t.Fatalf("done box bottom must not embed ▼ (corrupts box) in:\n%s", stdout)
+	}
+	// done→◉ is a dead end: no refine rail continuing under terminal
+	lines := stdoutLines(stdout)
+	termIdx := lastLineIndexContaining(lines, "◉")
+	if termIdx < 0 {
+		termIdx = lastLineIndexContaining(lines, "@")
+	}
+	if termIdx >= 0 {
+		for i := termIdx + 1; i < len(lines); i++ {
+			p := strings.TrimSpace(stripANSI(lines[i]))
+			if p == "" {
+				continue
+			}
+			if strings.Contains(p, "refine") || strings.Contains(p, "clarification") {
+				t.Fatalf("terminal is a dead end; unexpected content after ◉/@ at line %d: %q", i+1, p)
+			}
+		}
 	}
 }
 
@@ -320,11 +517,19 @@ func ensureStatusHelpersUsed() {
 	_ = ansiEscapeRE
 	_ = stripANSI
 	_ = maxLineWidth
-	_ = assertMaxWidth36
+	_ = assertMaxWidth
+	_ = assertMaxWidth42
+	_ = isStageBoxMidRow
 	_ = assertBoxLineForStage
+	_ = assertStdoutEqualsFile
 	_ = assertNoANSI
 	_ = assertHasANSISGR
 	_ = assertStageLineHasGreen
+	_ = lastRuneIndex
+	_ = assertNoFollowupRailAligned
+	_ = firstVisibleUnderActiveSGR
+	_ = stageBoxMidLine
+	_ = assertBoxColoredLeftRailClear
 	_ = assertCompactBoxArt
 	_ = assertNotMermaidWide
 	_ = assertStdoutHasStages

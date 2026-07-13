@@ -182,6 +182,32 @@ func agentLeadingFacts(stdout string) string {
 	return b.String()
 }
 
+// assertAgentLeadingFactsShape matches the leading facts block via assert.Output.
+// The dir: line is a runtime-exact literal (value taken from stdout), not __DIR__ type=string,
+// because doctest's assert-mod matches type=string as non-greedy [^\n]*? which can consume
+// empty and leave the path as "unparsed remainder". Use the exact stdout dir string — do not
+// Clean/EvalSymlinks it before templating (macOS /var vs /private/var).
+func assertAgentLeadingFactsShape(t *testing.T, stdout, title, stage, terminal, topic string) {
+	t.Helper()
+	facts := agentLeadingFacts(stdout)
+	dirVal, ok := parseAgentFactValue(stdout, "dir")
+	if !ok || dirVal == "" {
+		t.Fatalf("dir: missing for leading facts template\n%s", stdout)
+	}
+	tmpl := fmt.Sprintf(`---
+version: 2
+__ID__: type=number, example=1
+---
+id: __ID__
+title: %s
+stage: %s
+terminal: %s
+topic: %s
+dir: %s
+`, title, stage, terminal, topic, dirVal)
+	assert.Output(t, facts, tmpl)
+}
+
 // parseAgentFactValue returns the value for a leading whole-line key: value fact.
 func parseAgentFactValue(stdout, key string) (string, bool) {
 	plain := stripANSI(stdout)
@@ -346,6 +372,7 @@ func ensureAgentHelpersUsed() {
 	_ = assertAgentFact
 	_ = assertAgentHasFactKeys
 	_ = agentLeadingFacts
+	_ = assertAgentLeadingFactsShape
 	_ = parseAgentFactValue
 	_ = assertAgentFactKeyOrder
 	_ = assertAgentNoAltPathKeys
