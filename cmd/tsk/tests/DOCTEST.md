@@ -6,7 +6,8 @@
 Decision tree covering the `tsk` CLI: task creation (inbox and topic placement),
 listing and filtering, show/status display, stage transitions (advance, stage,
 clarify, followup, done), topic management, label management, `next` selection,
-and append-only `events.jsonl` auditing.
+Slack-like **channel** spaces (create/list/archive/delete, send, messages,
+participants), and append-only `events.jsonl` auditing.
 
 # DSN (Domain Specific Notion)
 
@@ -30,6 +31,13 @@ and append-only `events.jsonl` auditing.
 - **Request.TaskID** — task id for multi-step setups and assertions.
 - **Request.ExtraEnv** — optional `KEY=value` strings appended to the child `tsk` process env (after `tskEnv` strips host agent / format-override vars for stable defaults).
 - **Session fixtures** — doctest injects `DOCTEST_SESSION_ID`; `getTskBin` builds once per session to `{cache}/bin/tsk` with file lock across leaf processes.
+- **channels/** — under `TSK_HOME`; layout `index/<channel-id>` (line `active/<id>` or `archive/<id>`), `active/<id>/` and `archive/<id>/` each with `channel.json`, `messages.jsonl`, `msg-counter`; `tombstones/<id>` blocks id reuse after delete.
+- **channel.json** — `id`, `name`, `status` (`active`|`archived`), `participants` (sorted by `handle` on write), `created_at`, `updated_at`; on create, creator handle + `agent` auto-joined.
+- **Channel message** — JSONL line `{"id", "sender", "body", "created_at"}`; monotonic ids via `msg-counter` (flock).
+- **Channel identity** — precedence `--user <handle>` > `TSK_USER` env > `$USER`; empty `$USER` errors; handle format `^[a-z0-9][a-z0-9_-]{0,63}$` lowercase; channel id same format, default `Slugify(name)` when `--channel-id` omitted; `--user` on create, send, messages, participants, participant add/remove (not list/archive/delete).
+- **Channel membership gate** — non-participants cannot `send`, `messages`, `participants`, `participant add`, or `participant remove`; archived channels are readonly for mutations but `messages`/`participants`/`list --all` still work.
+- **Channel CLI output** — create prints `channel-id\n`; archive `archived <id>\n`; delete `deleted <id>\n`; send `sent message <id>\n`; participant add `added <handle>\n`; remove self `left <channel-id>\n`; remove other `removed <handle>\n`; list human table + gray count footer (TTY); `--json` arrays without ANSI; errors single stderr line `Error:` prefix, exit 1; every channel command appends `events.jsonl` with `command: channel`.
+- **Request.ChannelID** / **Request.ChannelName** — channel id and display name for multi-step channel setups and assertions.
 
 ## Tree Overview
 
@@ -105,6 +113,61 @@ tsk tests
 │   ├── topic/                    # topic --help → set, mkdir
 │   ├── label/                    # label --help → add, rm
 │   └── clarify/                  # clarify --help → add, list, confirm
+├── channel/                      # tsk channel *
+│   ├── create/                   # channel create
+│   │   ├── basic/                # slug id, creator+agent, index, empty messages.jsonl
+│   │   ├── custom-id/            # --channel-id
+│   │   ├── user-flag/            # --user carol sets creator participant
+│   │   ├── duplicate/            # same id → error
+│   │   ├── tombstone-block/      # delete then recreate → error
+│   │   └── invalid-id/           # bad id format → error
+│   ├── list/                     # channel list
+│   │   ├── empty/                # no channels
+│   │   ├── active-only/          # archived hidden by default
+│   │   ├── all/                  # --all shows archived
+│   │   ├── json/                 # --json valid, no ANSI
+│   │   └── deleted-hidden/       # tombstoned absent from --all
+│   ├── archive/                  # channel archive
+│   │   ├── basic/                # dir move, status archived, excluded from default list
+│   │   ├── readonly/             # send blocked
+│   │   ├── not-found/            # missing id → error
+│   │   └── already-archived/     # double archive → error
+│   ├── delete/                   # channel delete
+│   │   ├── active/               # tombstone; not in list --all
+│   │   ├── archived/             # delete from archive/
+│   │   └── not-found/            # missing id → error
+│   ├── send/                     # channel send
+│   │   ├── basic/                # participant sends; jsonl + counter
+│   │   ├── not-member/           # non-participant → error
+│   │   ├── archived/             # archived → error
+│   │   ├── not-found/            # missing channel → error
+│   │   ├── user-flag/            # --user overrides identity
+│   │   └── user-over-env/        # --user wins over TSK_USER
+│   ├── messages/                 # channel messages
+│   │   ├── human/                # chronological transcript
+│   │   ├── json/                 # --json array
+│   │   ├── limit/                # --limit 1 last message
+│   │   ├── empty/                # no messages yet
+│   │   ├── not-member/           # non-participant → error
+│   │   ├── archived/             # archived channel readable
+│   │   └── not-found/            # missing channel → error
+│   ├── participant/              # channel participant *
+│   │   ├── add/                  # add bob
+│   │   ├── add-dup/              # idempotent add
+│   │   ├── remove-self/          # leave without handle
+│   │   ├── remove-other/         # remove bob
+│   │   ├── not-member/           # non-participant cannot add
+│   │   ├── last-participant/     # cannot remove last member
+│   │   ├── archived-readonly/    # add/remove blocked when archived
+│   │   ├── not-found/            # missing channel → error
+│   │   └── participants-json/    # participants --json roster
+│   ├── help/                     # channel help
+│   │   ├── root/                 # channel --help lists subcommands
+│   │   ├── create/               # create --help documents --channel-id
+│   │   ├── top/                  # tsk --help lists channel
+│   │   └── send/                 # send --help documents --user
+│   └── events/                   # channel events.jsonl
+│       └── append/               # channel create appends audit line
 └── ux/                           # CLI UX conventions
     ├── error-once/               # advance missing id → single stderr line
     └── create-prints-id/         # create prints id\n on stdout
@@ -171,6 +234,51 @@ tsk tests
 | 22 | help/clarify | `tsk clarify --help` → lists `add`, `list`, `confirm` |
 | 23 | ux/error-once | `tsk advance` (no id) → exit 1; `task id required` on stderr exactly once |
 | 24 | ux/create-prints-id | `tsk create "hello"` → stdout `1\n`; inbox dir created; stderr empty |
+| 58 | channel/create/basic | `tsk channel create "Eng Alerts"` → `eng-alerts\n`, active dir, agent+alice participants, empty messages.jsonl |
+| 59 | channel/create/custom-id | `--channel-id my-room` → `my-room\n`, `channels/active/my-room/` |
+| 59a | channel/create/user-flag | `create --user carol` → carol+agent participants (not alice) |
+| 60 | channel/create/duplicate | second create same id → exit 1, `Error:` on stderr |
+| 61 | channel/create/tombstone-block | delete then recreate same id → error; tombstone remains |
+| 62 | channel/create/invalid-id | `--channel-id "BAD ID"` → exit 1 |
+| 63 | channel/list/empty | no channels → empty or zero-count list |
+| 64 | channel/list/active-only | archived hidden from default list |
+| 65 | channel/list/all | `--all` shows archived channels |
+| 66 | channel/list/json | `--json` valid array, no ANSI |
+| 67 | channel/list/deleted-hidden | tombstoned channel absent from `list --all` |
+| 68 | channel/archive/basic | move to `archive/`, status archived, excluded from default list |
+| 69 | channel/archive/readonly | archived channel rejects send |
+| 70 | channel/archive/not-found | archive missing id → error |
+| 71 | channel/archive/already-archived | double archive → error |
+| 72 | channel/delete/active | active delete → tombstone, `deleted <id>\n`, not in list |
+| 73 | channel/delete/archived | delete from archive/ → tombstone |
+| 74 | channel/delete/not-found | delete missing id → error |
+| 75 | channel/send/basic | participant send → `sent message 1\n`, jsonl line |
+| 76 | channel/send/not-member | non-participant send → error |
+| 77 | channel/send/archived | send on archived → error |
+| 78 | channel/send/not-found | send missing channel → error |
+| 79 | channel/send/user-flag | `--user bob` sets message sender |
+| 79a | channel/send/user-over-env | `TSK_USER=alice` + `--user bob` → sender bob |
+| 80 | channel/messages/human | chronological human transcript |
+| 81 | channel/messages/json | `--json` message array |
+| 82 | channel/messages/limit | `--limit 1` returns last message only |
+| 83 | channel/messages/empty | no messages → success, empty transcript |
+| 84 | channel/messages/not-member | non-participant read → error |
+| 85 | channel/messages/archived | archived channel messages readable |
+| 86 | channel/messages/not-found | messages missing channel → error |
+| 87 | channel/participant/add | `added bob\n`, bob in roster |
+| 88 | channel/participant/add-dup | idempotent re-add bob |
+| 89 | channel/participant/remove-self | `left <id>\n` when no handle |
+| 90 | channel/participant/remove-other | `removed bob\n` |
+| 91 | channel/participant/not-member | non-participant cannot add |
+| 92 | channel/participant/last-participant | cannot remove last member |
+| 93 | channel/participant/archived-readonly | add/remove blocked when archived |
+| 94 | channel/participant/not-found | participant add on missing channel → error |
+| 95 | channel/participant/participants-json | `participants --json` roster array |
+| 96 | channel/help/root | `channel --help` lists subcommands |
+| 97 | channel/help/create | `channel create --help` documents `--channel-id` |
+| 98 | channel/help/top | `tsk --help` lists `channel` |
+| 99 | channel/help/send | `channel send --help` documents `--user` (not `--as`) |
+| 100 | channel/events/append | channel create appends `events.jsonl` with `command: channel` |
 
 ## How to Run
 
@@ -195,6 +303,16 @@ doctest test ./tests/list
 doctest test ./tests/events
 doctest test ./tests/help
 doctest test ./tests/ux
+doctest test ./tests/channel
+doctest test ./tests/channel/create
+doctest test ./tests/channel/list
+doctest test ./tests/channel/archive
+doctest test ./tests/channel/delete
+doctest test ./tests/channel/send
+doctest test ./tests/channel/messages
+doctest test ./tests/channel/participant
+doctest test ./tests/channel/help
+doctest test ./tests/channel/events
 
 # Run individual leaves
 doctest test ./tests/create/no-topic
@@ -253,6 +371,15 @@ doctest test ./tests/help/label
 doctest test ./tests/help/clarify
 doctest test ./tests/ux/error-once
 doctest test ./tests/ux/create-prints-id
+doctest test ./tests/channel/create/basic
+doctest test ./tests/channel/list/json
+doctest test ./tests/channel/send/basic
+doctest test ./tests/channel/send/user-flag
+doctest test ./tests/channel/send/user-over-env
+doctest test ./tests/channel/create/user-flag
+doctest test ./tests/channel/participant/last-participant
+doctest test ./tests/channel/help/top
+doctest test ./tests/channel/events/append
 ```
 
 ```go
@@ -270,8 +397,10 @@ type Request struct {
 	Topic    string
 	Labels   []string
 	Stage    string
-	Message  string   // followup message body
-	ExtraEnv []string // KEY=value injected into child tsk env (after tskEnv base strip)
+	Message     string   // followup message body
+	ChannelID   string   // channel id for multi-step channel setups
+	ChannelName string   // channel display name
+	ExtraEnv    []string // KEY=value injected into child tsk env (after tskEnv base strip)
 }
 
 type Response struct {

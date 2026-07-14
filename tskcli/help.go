@@ -19,6 +19,7 @@ Commands:
   clarify    manage clarification questions
   followup   add followup context from summary
   done       mark task done from summary or user_followup
+  channel    manage conversational channels
 
 Run tsk <command> --help for command-specific options.
 `

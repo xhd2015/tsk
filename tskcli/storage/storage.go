@@ -20,7 +20,10 @@ func ResolveHome() (string, error) {
 
 // EnsureLayout creates the base storage directories under home.
 func EnsureLayout(home string) error {
-	for _, dir := range []string{"index", "inbox", "topics"} {
+	for _, dir := range []string{
+		"index", "inbox", "topics",
+		"channels/index", "channels/active", "channels/archive", "channels/tombstones",
+	} {
 		if err := os.MkdirAll(filepath.Join(home, dir), 0o755); err != nil {
 			return fmt.Errorf("create %s: %w", dir, err)
 		}

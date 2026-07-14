@@ -1,3 +1,5 @@
+github.com/mattn/go-shellwords v1.0.14 h1:yUKzIgsCnosndOASY6/enly1EAuaXeFSQ7cdyA3OuYg=
+github.com/mattn/go-shellwords v1.0.14/go.mod h1:EZzvwXDESEeg03EKmM+RmDnNOPKG4lLtQsUlTZDWQ8Y=
 github.com/xhd2015/agent-pro v0.0.51 h1:J3Yf2kvwFhU+AeXCsovV3Fl9gx7RVQLhgnaCmixuvQw=
 github.com/xhd2015/agent-pro v0.0.51/go.mod h1:ZQNRgBPxOw3yHfiOz/t1B9SasyBnfL41PS0n4785eQ4=
 github.com/xhd2015/less-flags v1.0.0 h1:ay8YG0WSXn59CAwBYUcAsq7l+mUwDEMUqaW/Fy0ZoCM=
