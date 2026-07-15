@@ -3,7 +3,7 @@
 **Feature**: `tsk channel delete` removes channel dir, index, writes tombstone
 
 ```
-tsk channel delete --channel-id ID -> tombstones/<id>; blocks id reuse
+tsk channel delete --channel-id ID -> tombstones/<id>.json; blocks id reuse
 ```
 
 ```go

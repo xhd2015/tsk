@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 1; stderr `Error:`.
-- Agent still present.
+- `participants.jsonl` still has `alice` only.
 
 ## Exit Code
 
@@ -14,9 +14,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatal("expected non-zero exit")
 	}
 	assertStderrErrorPrefix(t, resp.Stderr)
-	ch := readChannelJSON(t, activeChannelDir(req, "solo-ch"))
-	if len(ch.Participants) != 1 || ch.Participants[0].Handle != "agent" {
-		t.Fatalf("expected only agent left, got %+v", ch.Participants)
-	}
+	assertParticipantHandlesSorted(t, activeChannelDir(req, "solo-ch"), []string{"alice"})
 }
 ```

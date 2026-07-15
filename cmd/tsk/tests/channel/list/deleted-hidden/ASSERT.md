@@ -15,6 +15,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("exit code %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
 	assertNotContains(t, resp.Stdout, "gone-channel")
-	assertFileExists(t, channelAbs(req, "tombstones/gone-channel"))
+	assertFileExists(t, channelAbs(req, "tombstones/gone-channel.json"))
 }
 ```

@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0; stdout `carol-room\n`.
-- `channel.json` participants are `agent` and `carol` sorted (not alice).
+- `participants.jsonl` has `carol` only (not alice).
 
 ## Exit Code
 
@@ -21,11 +21,11 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	id := "carol-room"
 	dir := activeChannelDir(req, id)
 	assertDirExists(t, dir)
-	ch := readChannelJSON(t, dir)
-	assertChannelParticipantsSorted(t, ch, []string{"agent", "carol"})
-	for _, p := range ch.Participants {
+	readChannelMetadata(t, dir)
+	assertParticipantHandlesSorted(t, dir, []string{"carol"})
+	for _, p := range readParticipantsJSONL(t, dir) {
 		if p.Handle == "alice" {
-			t.Fatalf("alice should not be participant when --user carol; got %+v", ch.Participants)
+			t.Fatalf("alice should not be participant when --user carol; got %+v", readParticipantsJSONL(t, dir))
 		}
 	}
 }

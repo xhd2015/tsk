@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 1; stderr `Error:`.
-- Tombstone `channels/tombstones/eng-alerts` exists.
+- Tombstone `channels/tombstones/eng-alerts.json` exists.
 - No `channels/active/eng-alerts` or index entry.
 
 ## Exit Code
@@ -15,7 +15,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatal("expected non-zero exit")
 	}
 	assertStderrErrorPrefix(t, resp.Stderr)
-	assertFileExists(t, channelAbs(req, "tombstones/eng-alerts"))
+	assertFileExists(t, channelAbs(req, "tombstones/eng-alerts.json"))
 	assertFileNotExists(t, activeChannelDir(req, "eng-alerts"))
 	assertFileNotExists(t, channelAbs(req, "index/eng-alerts"))
 	ts := readTombstone(t, req, "eng-alerts")

@@ -3,7 +3,7 @@
 **Feature**: `create --user` sets creator participant (overrides TSK_USER)
 
 ```
-TSK_USER=alice -> create --user carol -> carol + agent participants (not alice)
+TSK_USER=alice -> create --user carol -> carol only in participants.jsonl (not alice)
 ```
 
 ## Steps

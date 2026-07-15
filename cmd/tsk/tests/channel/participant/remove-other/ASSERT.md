@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0; stdout `removed bob\n`.
-- Bob absent from roster.
+- `participants.jsonl` has `alice` only.
 
 ## Exit Code
 
@@ -14,7 +14,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("exit code %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "removed bob")
-	ch := readChannelJSON(t, activeChannelDir(req, "team-ch"))
-	assertChannelParticipantsSorted(t, ch, []string{"agent", "alice"})
+	assertParticipantHandlesSorted(t, activeChannelDir(req, req.ChannelID), []string{"alice"})
 }
 ```

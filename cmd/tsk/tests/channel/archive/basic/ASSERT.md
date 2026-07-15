@@ -22,7 +22,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertDirExists(t, archDir)
 	assertChannelIndexEquals(t, req, "eng-alerts", "archive/eng-alerts")
 
-	ch := readChannelJSON(t, archDir)
+	ch := readChannelMetadata(t, archDir)
 	if ch.Status != "archived" {
 		t.Fatalf("status: got %q want archived", ch.Status)
 	}

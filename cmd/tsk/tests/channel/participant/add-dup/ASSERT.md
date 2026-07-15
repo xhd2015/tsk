@@ -1,7 +1,7 @@
 ## Expected
 
-- Exit code 0; stdout `added bob\n`.
-- Participants still exactly agent, alice, bob.
+- Exit code 0 (idempotent).
+- Participants still exactly `alice`, `bob`.
 
 ## Exit Code
 
@@ -13,8 +13,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if resp.ExitCode != 0 {
 		t.Fatalf("exit code %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
-	assertStdoutTrimmedEquals(t, resp.Stdout, "added bob")
-	ch := readChannelJSON(t, activeChannelDir(req, "team-ch"))
-	assertChannelParticipantsSorted(t, ch, []string{"agent", "alice", "bob"})
+	assertParticipantHandlesSorted(t, activeChannelDir(req, req.ChannelID), []string{"alice", "bob"})
 }
 ```

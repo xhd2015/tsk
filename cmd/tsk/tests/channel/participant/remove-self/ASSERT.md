@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0; stdout `left team-ch\n`.
-- Bob absent from participants.
+- Bob absent from `participants.jsonl`; alice remains.
 
 ## Exit Code
 
@@ -14,7 +14,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatalf("exit code %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "left team-ch")
-	ch := readChannelJSON(t, activeChannelDir(req, "team-ch"))
-	assertChannelParticipantsSorted(t, ch, []string{"agent", "alice"})
+	assertParticipantHandlesSorted(t, activeChannelDir(req, "team-ch"), []string{"alice"})
 }
 ```

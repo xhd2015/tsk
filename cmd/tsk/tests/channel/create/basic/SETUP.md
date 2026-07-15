@@ -1,6 +1,6 @@
 # Scenario
 
-**Feature**: create channel with slug id, creator+agent participants, index, empty messages.jsonl
+**Feature**: create channel with slug id, creator-only participants.jsonl, index, empty messages.jsonl
 
 ```
 TSK_USER=alice -> tsk channel create "Eng Alerts" -> eng-alerts

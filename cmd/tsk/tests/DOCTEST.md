@@ -31,8 +31,9 @@ participants), and append-only `events.jsonl` auditing.
 - **Request.TaskID** — task id for multi-step setups and assertions.
 - **Request.ExtraEnv** — optional `KEY=value` strings appended to the child `tsk` process env (after `tskEnv` strips host agent / format-override vars for stable defaults).
 - **Session fixtures** — doctest injects `DOCTEST_SESSION_ID`; `getTskBin` builds once per session to `{cache}/bin/tsk` with file lock across leaf processes.
-- **channels/** — under `TSK_HOME`; layout `index/<channel-id>` (line `active/<id>` or `archive/<id>`), `active/<id>/` and `archive/<id>/` each with `channel.json`, `messages.jsonl`, `msg-counter`; `tombstones/<id>` blocks id reuse after delete.
-- **channel.json** — `id`, `name`, `status` (`active`|`archived`), `participants` (sorted by `handle` on write), `created_at`, `updated_at`; on create, creator handle + `agent` auto-joined.
+- **channels/** — under `TSK_HOME`; layout `index/<channel-id>` (line `active/<id>` or `archive/<id>`), `active/<id>/` and `archive/<id>/` each with `channel.json` (metadata only), `participants.jsonl`, `messages.jsonl`, `msg-counter`; `tombstones/<id>.json` blocks id reuse after delete.
+- **channel.json** — metadata only: `id`, `name`, `status` (`active`|`archived`), `created_at`, `updated_at` (no embedded `participants`).
+- **participants.jsonl** — one `{"handle","joined_at"}` per line, sorted by `handle` on write; on create, creator handle only (no `agent` auto-join).
 - **Channel message** — JSONL line `{"id", "sender", "body", "created_at"}`; monotonic ids via `msg-counter` (flock).
 - **Channel identity** — precedence `--user <handle>` > `TSK_USER` env > `$USER`; empty `$USER` errors; handle format `^[a-z0-9][a-z0-9_-]{0,63}$` lowercase; channel id same format, default `Slugify(name)` when `--channel-id` omitted; `--user` on create, send, messages, participants, participant add/remove (not list/archive/delete).
 - **Channel membership gate** — non-participants cannot `send`, `messages`, `participants`, `participant add`, or `participant remove`; archived channels are readonly for mutations but `messages`/`participants`/`list --all` still work.
@@ -115,7 +116,7 @@ tsk tests
 │   └── clarify/                  # clarify --help → add, list, confirm
 ├── channel/                      # tsk channel *
 │   ├── create/                   # channel create
-│   │   ├── basic/                # slug id, creator+agent, index, empty messages.jsonl
+│   │   ├── basic/                # slug id, creator-only participants.jsonl, index, empty messages.jsonl
 │   │   ├── custom-id/            # --channel-id
 │   │   ├── user-flag/            # --user carol sets creator participant
 │   │   ├── duplicate/            # same id → error
@@ -234,9 +235,9 @@ tsk tests
 | 22 | help/clarify | `tsk clarify --help` → lists `add`, `list`, `confirm` |
 | 23 | ux/error-once | `tsk advance` (no id) → exit 1; `task id required` on stderr exactly once |
 | 24 | ux/create-prints-id | `tsk create "hello"` → stdout `1\n`; inbox dir created; stderr empty |
-| 58 | channel/create/basic | `tsk channel create "Eng Alerts"` → `eng-alerts\n`, active dir, agent+alice participants, empty messages.jsonl |
+| 58 | channel/create/basic | `tsk channel create "Eng Alerts"` → `eng-alerts\n`, active dir, alice-only participants.jsonl, metadata-only channel.json, empty messages.jsonl |
 | 59 | channel/create/custom-id | `--channel-id my-room` → `my-room\n`, `channels/active/my-room/` |
-| 59a | channel/create/user-flag | `create --user carol` → carol+agent participants (not alice) |
+| 59a | channel/create/user-flag | `create --user carol` → carol-only participants.jsonl (not alice) |
 | 60 | channel/create/duplicate | second create same id → exit 1, `Error:` on stderr |
 | 61 | channel/create/tombstone-block | delete then recreate same id → error; tombstone remains |
 | 62 | channel/create/invalid-id | `--channel-id "BAD ID"` → exit 1 |

@@ -3,8 +3,8 @@
 **Feature**: `tsk channel` manages Slack-like conversational channels under `TSK_HOME/channels/`
 
 ```
-# identity: --user > TSK_USER > $USER; creator + agent auto-join on create
-TSK_USER=alice -> tsk channel create <name> -> active/<id>/channel.json + index + messages.jsonl
+# identity: --user > TSK_USER > $USER; creator ONLY auto-joins on create (no agent)
+TSK_USER=alice -> tsk channel create <name> -> active/<id>/channel.json + participants.jsonl + index
 tsk channel send|messages|participants|participant * -> membership-gated reads/writes
 tsk channel archive|delete -> lifecycle + tombstone blocks id reuse
 ```
@@ -13,11 +13,14 @@ tsk channel archive|delete -> lifecycle + tombstone blocks id reuse
 
 - Fresh `TSK_HOME` per leaf unless Setup seeds channels.
 - Default participant identity `TSK_USER=alice` via `req.ExtraEnv` unless a leaf overrides.
-- Channel storage: `channels/index/<id>`, `channels/active|archive/<id>/`, `channels/tombstones/<id>`.
+- Channel storage: `channels/index/<id>`, `channels/active|archive/<id>/` with
+  `channel.json` (metadata only), `participants.jsonl`, `messages.jsonl`, `msg-counter`;
+  `channels/tombstones/<id>.json` blocks id reuse after delete.
 
 ## Context
 
-Helpers mirror task helpers: `runTskCmd`/`runTskOK` with `tskEnv(req)`. Channel-specific readers assert on-disk layout and JSONL transcripts.
+Helpers mirror task helpers: `runTskCmd`/`runTskOK` with `tskEnv(req)`. Channel-specific
+readers assert normalized on-disk layout (`participants.jsonl` separate from `channel.json`).
 
 ```go
 import (
@@ -36,13 +39,12 @@ type channelParticipant struct {
 	JoinedAt string `json:"joined_at"`
 }
 
-type channelJSON struct {
-	ID           string               `json:"id"`
-	Name         string               `json:"name"`
-	Status       string               `json:"status"`
-	Participants []channelParticipant `json:"participants"`
-	CreatedAt    string               `json:"created_at"`
-	UpdatedAt    string               `json:"updated_at"`
+type channelMetadata struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type channelMessage struct {
@@ -97,17 +99,51 @@ func readChannelIndex(t *testing.T, req *Request, id string) string {
 	return strings.TrimSpace(string(data))
 }
 
-func readChannelJSON(t *testing.T, channelDir string) channelJSON {
+func readChannelMetadata(t *testing.T, channelDir string) channelMetadata {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(channelDir, "channel.json"))
 	if err != nil {
 		t.Fatalf("read %s/channel.json: %v", channelDir, err)
 	}
-	var ch channelJSON
-	if err := json.Unmarshal(data, &ch); err != nil {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("parse channel.json: %v", err)
 	}
+	if _, ok := raw["participants"]; ok {
+		t.Fatalf("channel.json must not contain participants field; got keys %v", raw)
+	}
+	var ch channelMetadata
+	if err := json.Unmarshal(data, &ch); err != nil {
+		t.Fatalf("decode channel.json metadata: %v", err)
+	}
 	return ch
+}
+
+func readParticipantsJSONL(t *testing.T, channelDir string) []channelParticipant {
+	t.Helper()
+	path := filepath.Join(channelDir, "participants.jsonl")
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open %s: %v", path, err)
+	}
+	defer f.Close()
+	var out []channelParticipant
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var p channelParticipant
+		if err := json.Unmarshal([]byte(line), &p); err != nil {
+			t.Fatalf("parse participants.jsonl line: %v", err)
+		}
+		out = append(out, p)
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatalf("scan participants.jsonl: %v", err)
+	}
+	return out
 }
 
 func readMessagesJSONL(t *testing.T, channelDir string) []channelMessage {
@@ -152,9 +188,9 @@ func readMsgCounter(t *testing.T, channelDir string) int {
 
 func readTombstone(t *testing.T, req *Request, id string) channelTombstone {
 	t.Helper()
-	data, err := os.ReadFile(channelAbs(req, filepath.Join("tombstones", id)))
+	data, err := os.ReadFile(channelAbs(req, filepath.Join("tombstones", id+".json")))
 	if err != nil {
-		t.Fatalf("read tombstone %s: %v", id, err)
+		t.Fatalf("read tombstone %s.json: %v", id, err)
 	}
 	var ts channelTombstone
 	if err := json.Unmarshal(data, &ts); err != nil {
@@ -210,17 +246,17 @@ func deleteChannel(t *testing.T, req *Request, channelID string) {
 	runTskOK(t, req, "channel", "delete", "--channel-id", channelID)
 }
 
-func participantHandles(ch channelJSON) []string {
-	out := make([]string, len(ch.Participants))
-	for i, p := range ch.Participants {
+func participantHandles(parts []channelParticipant) []string {
+	out := make([]string, len(parts))
+	for i, p := range parts {
 		out[i] = p.Handle
 	}
 	return out
 }
 
-func assertChannelParticipantsSorted(t *testing.T, ch channelJSON, want []string) {
+func assertParticipantHandlesSorted(t *testing.T, channelDir string, want []string) {
 	t.Helper()
-	got := participantHandles(ch)
+	got := participantHandles(readParticipantsJSONL(t, channelDir))
 	if len(got) != len(want) {
 		t.Fatalf("participants: got %v want %v", got, want)
 	}
@@ -280,7 +316,8 @@ func ensureChannelHelpersUsed() {
 	_ = activeChannelDir
 	_ = archiveChannelDir
 	_ = readChannelIndex
-	_ = readChannelJSON
+	_ = readChannelMetadata
+	_ = readParticipantsJSONL
 	_ = readMessagesJSONL
 	_ = readMsgCounter
 	_ = readTombstone
@@ -291,7 +328,7 @@ func ensureChannelHelpersUsed() {
 	_ = archiveChannel
 	_ = deleteChannel
 	_ = participantHandles
-	_ = assertChannelParticipantsSorted
+	_ = assertParticipantHandlesSorted
 	_ = assertChannelIndexEquals
 	_ = assertStderrErrorPrefix
 	_ = assertNoANSI

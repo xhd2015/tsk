@@ -3,7 +3,7 @@
 **Feature**: `participants --json` lists roster for members
 
 ```
-create -> participants --json -> JSON array with alice and agent
+create -> participants --json -> JSON array with alice only
 ```
 
 ## Steps

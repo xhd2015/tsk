@@ -2,7 +2,8 @@
 
 - Exit code 0.
 - Stdout `eng-alerts\n`.
-- `channels/active/eng-alerts/channel.json` with `status: active`, participants `agent` and `alice` sorted by handle.
+- `channels/active/eng-alerts/channel.json` metadata only (`status: active`).
+- `participants.jsonl` has creator `alice` only.
 - `channels/index/eng-alerts` contains `active/eng-alerts`.
 - `messages.jsonl` exists (empty); `msg-counter` exists.
 
@@ -29,11 +30,12 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	dir := activeChannelDir(req, id)
 	assertDirExists(t, dir)
 	assertFileExists(t, filepath.Join(dir, "channel.json"))
+	assertFileExists(t, filepath.Join(dir, "participants.jsonl"))
 	assertFileExists(t, filepath.Join(dir, "messages.jsonl"))
 	assertFileExists(t, filepath.Join(dir, "msg-counter"))
 	assertChannelIndexEquals(t, req, id, "active/"+id)
 
-	ch := readChannelJSON(t, dir)
+	ch := readChannelMetadata(t, dir)
 	if ch.ID != id {
 		t.Fatalf("id: got %q want %q", ch.ID, id)
 	}
@@ -43,7 +45,7 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if ch.Status != "active" {
 		t.Fatalf("status: got %q want active", ch.Status)
 	}
-	assertChannelParticipantsSorted(t, ch, []string{"agent", "alice"})
+	assertParticipantHandlesSorted(t, dir, []string{"alice"})
 
 	info, err := os.Stat(filepath.Join(dir, "messages.jsonl"))
 	if err != nil {

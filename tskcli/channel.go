@@ -1,12 +1,15 @@
 package tskcli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	lessflags "github.com/xhd2015/less-flags"
+	chpkg "github.com/xhd2015/tsk/channel"
+	"github.com/xhd2015/tsk/channel/file"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
@@ -15,6 +18,13 @@ const (
 	ansiGray  = "\x1b[90m"
 	ansiReset = "\x1b[0m"
 )
+
+func openChannelStore(home string) (chpkg.Store, error) {
+	if err := storage.EnsureLayout(home); err != nil {
+		return nil, err
+	}
+	return file.NewStore(file.Options{Home: home})
+}
 
 func runChannel(home string, args []string) error {
 	setCommand(currentCtx, "channel", args)
@@ -87,26 +97,32 @@ func runChannelCreate(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel create: name required"))
 	}
 
-	if err := storage.EnsureLayout(home); err != nil {
+	store, err := openChannelStore(home)
+	if err != nil {
 		return err
 	}
 
 	if channelID == "" {
-		channelID = storage.Slugify(name)
+		channelID = chpkg.Slugify(name)
 	}
 	channelID = strings.ToLower(strings.TrimSpace(channelID))
-	if err := storage.ValidateChannelID(channelID); err != nil {
+	if err := chpkg.ValidateID(channelID); err != nil {
 		return channelFail(err)
 	}
 
-	creator, err := storage.ResolveChannelIdentity(userHandle)
+	creator, err := chpkg.ResolveIdentity(userHandle)
 	if err != nil {
 		return channelFail(err)
 	}
-	if err := storage.CreateChannel(home, name, channelID, creator); err != nil {
+	ch, err := store.Create(context.Background(), chpkg.CreateRequest{
+		Name:    name,
+		ID:      channelID,
+		Creator: creator,
+	})
+	if err != nil {
 		return channelFail(err)
 	}
-	fmt.Println(channelID)
+	fmt.Println(ch.ID)
 	return nil
 }
 
@@ -130,7 +146,11 @@ func runChannelList(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel list: unexpected arguments"))
 	}
 
-	channels, err := storage.ListChannels(home, all)
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	channels, err := store.List(context.Background(), chpkg.ListOptions{All: all})
 	if err != nil {
 		return channelFail(err)
 	}
@@ -190,7 +210,11 @@ func runChannelArchive(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel archive: --channel-id required"))
 	}
 
-	if err := storage.ArchiveChannel(home, channelID); err != nil {
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	if err := store.Archive(context.Background(), channelID); err != nil {
 		return channelFail(err)
 	}
 	fmt.Printf("archived %s\n", channelSuccess(channelID, isStdoutTTY()))
@@ -219,7 +243,11 @@ func runChannelDelete(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel delete: --channel-id required"))
 	}
 
-	if err := storage.DeleteChannel(home, channelID); err != nil {
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	if err := store.Delete(context.Background(), channelID); err != nil {
 		return channelFail(err)
 	}
 	fmt.Printf("deleted %s\n", channelSuccess(channelID, isStdoutTTY()))
@@ -250,15 +278,23 @@ func runChannelSend(home string, args []string) error {
 	}
 	body := strings.Join(remaining, " ")
 
-	sender, err := storage.ResolveChannelIdentity(userHandle)
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	sender, err := chpkg.ResolveIdentity(userHandle)
 	if err != nil {
 		return channelFail(err)
 	}
-	msgID, err := storage.SendChannelMessage(home, channelID, sender, body)
+	msg, err := store.SendMessage(context.Background(), chpkg.SendMessageRequest{
+		ChannelID: channelID,
+		Sender:    sender,
+		Body:      body,
+	})
 	if err != nil {
 		return channelFail(err)
 	}
-	fmt.Printf("sent message %s\n", channelSuccess(fmt.Sprintf("%d", msgID), isStdoutTTY()))
+	fmt.Printf("sent message %s\n", channelSuccess(fmt.Sprintf("%d", msg.ID), isStdoutTTY()))
 	return nil
 }
 
@@ -289,19 +325,23 @@ func runChannelMessages(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel messages: --channel-id required"))
 	}
 
-	actor, err := storage.ResolveChannelIdentity(userHandle)
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	actor, err := chpkg.ResolveIdentity(userHandle)
 	if err != nil {
 		return channelFail(err)
 	}
-	ch, dir, _, err := storage.LoadChannelByID(home, channelID)
+	parts, err := store.ListParticipants(context.Background(), channelID)
 	if err != nil {
 		return channelFail(err)
 	}
-	if err := storage.RequireChannelParticipant(ch, actor); err != nil {
+	if err := requireParticipant(parts, channelID, actor); err != nil {
 		return channelFail(err)
 	}
 
-	msgs, err := storage.ReadChannelMessages(dir)
+	msgs, err := store.ListMessages(context.Background(), channelID)
 	if err != nil {
 		return channelFail(err)
 	}
@@ -353,20 +393,24 @@ func runChannelParticipants(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel participants: --channel-id required"))
 	}
 
-	actor, err := storage.ResolveChannelIdentity(userHandle)
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	actor, err := chpkg.ResolveIdentity(userHandle)
 	if err != nil {
 		return channelFail(err)
 	}
-	ch, _, _, err := storage.LoadChannelByID(home, channelID)
+	parts, err := store.ListParticipants(context.Background(), channelID)
 	if err != nil {
 		return channelFail(err)
 	}
-	if err := storage.RequireChannelParticipant(ch, actor); err != nil {
+	if err := requireParticipant(parts, channelID, actor); err != nil {
 		return channelFail(err)
 	}
 
 	if asJSON {
-		data, err := json.Marshal(ch.Participants)
+		data, err := json.Marshal(parts)
 		if err != nil {
 			return channelFail(err)
 		}
@@ -374,7 +418,7 @@ func runChannelParticipants(home string, args []string) error {
 		return nil
 	}
 
-	for _, p := range ch.Participants {
+	for _, p := range parts {
 		fmt.Printf("%s  %s\n", p.Handle, p.JoinedAt)
 	}
 	return nil
@@ -395,6 +439,15 @@ func runChannelParticipant(home string, args []string) error {
 	default:
 		return channelFail(fmt.Errorf("tsk channel participant: unknown subcommand %q", args[0]))
 	}
+}
+
+func requireParticipant(parts []chpkg.Participant, channelID, handle string) error {
+	for _, p := range parts {
+		if p.Handle == handle {
+			return nil
+		}
+	}
+	return fmt.Errorf("not a participant in channel %q", channelID)
 }
 
 func runChannelParticipantAdd(home string, args []string) error {
@@ -421,15 +474,23 @@ func runChannelParticipantAdd(home string, args []string) error {
 	}
 	handle := remaining[0]
 
-	actor, err := storage.ResolveChannelIdentity(userHandle)
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	actor, err := chpkg.ResolveIdentity(userHandle)
 	if err != nil {
 		return channelFail(err)
 	}
-	added, err := storage.AddChannelParticipant(home, channelID, actor, handle)
+	added, err := store.AddParticipant(context.Background(), chpkg.ParticipantChangeRequest{
+		ChannelID: channelID,
+		Handle:    handle,
+		Actor:     actor,
+	})
 	if err != nil {
 		return channelFail(err)
 	}
-	handle, err = storage.NormalizeHandle(handle)
+	handle, err = chpkg.NormalizeHandle(handle)
 	if err != nil {
 		return channelFail(err)
 	}
@@ -458,7 +519,11 @@ func runChannelParticipantRemove(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel participant remove: --channel-id required"))
 	}
 
-	actor, err := storage.ResolveChannelIdentity(userHandle)
+	store, err := openChannelStore(home)
+	if err != nil {
+		return err
+	}
+	actor, err := chpkg.ResolveIdentity(userHandle)
 	if err != nil {
 		return channelFail(err)
 	}
@@ -475,7 +540,11 @@ func runChannelParticipantRemove(home string, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel participant remove: unexpected arguments"))
 	}
 
-	if err := storage.RemoveChannelParticipant(home, channelID, actor, target); err != nil {
+	if err := store.RemoveParticipant(context.Background(), chpkg.ParticipantChangeRequest{
+		ChannelID: channelID,
+		Handle:    target,
+		Actor:     actor,
+	}); err != nil {
 		return channelFail(err)
 	}
 
@@ -483,7 +552,7 @@ func runChannelParticipantRemove(home string, args []string) error {
 	if selfLeave {
 		fmt.Printf("left %s\n", channelSuccess(channelID, tty))
 	} else {
-		target, err = storage.NormalizeHandle(target)
+		target, err = chpkg.NormalizeHandle(target)
 		if err != nil {
 			return channelFail(err)
 		}
@@ -512,7 +581,7 @@ Subcommands:
 func channelCreateHelp() string {
 	return `Usage: tsk channel create [--channel-id ID] [--user HANDLE] <name>
 
-Create a new channel. Creator and agent are auto-added as participants.
+Create a new channel. Creator is auto-added as a participant.
 
 Flags:
   --channel-id ID   channel id (default: slugified name)

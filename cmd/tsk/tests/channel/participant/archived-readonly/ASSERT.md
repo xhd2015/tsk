@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 1; stderr `Error:`.
-- Bob not added.
+- `participants.jsonl` unchanged (`alice` only).
 
 ## Exit Code
 
@@ -14,7 +14,6 @@ func Assert(t *testing.T, req *Request, resp *Response, err error) {
 		t.Fatal("expected non-zero exit")
 	}
 	assertStderrErrorPrefix(t, resp.Stderr)
-	ch := readChannelJSON(t, archiveChannelDir(req, "frozen-ch"))
-	assertChannelParticipantsSorted(t, ch, []string{"agent", "alice"})
+	assertParticipantHandlesSorted(t, archiveChannelDir(req, req.ChannelID), []string{"alice"})
 }
 ```
