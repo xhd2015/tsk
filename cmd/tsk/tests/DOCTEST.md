@@ -36,6 +36,7 @@ participants), and append-only `events.jsonl` auditing.
 - **participants.jsonl** — one `{"handle","joined_at"}` per line, sorted by `handle` on write; on create, creator handle only (no `agent` auto-join).
 - **Channel message** — JSONL line `{"id", "sender", "body", "created_at"}`; monotonic ids via `msg-counter` (flock).
 - **Channel identity** — precedence `--user <handle>` > `TSK_USER` env > `$USER`; empty `$USER` errors; handle format `^[a-z0-9][a-z0-9_-]{0,63}$` lowercase; channel id same format, default `Slugify(name)` when `--channel-id` omitted; `--user` on create, send, messages, participants, participant add/remove (not list/archive/delete).
+- **Channel parent flags** — `--channel-id` and `--user` may appear directly after `channel` before the action subcommand (parent peel); merge with leaf flags (same value OK; different values → conflict error). `list` hard-rejects parent `--channel-id` / `--user`. Nested forms work: `channel --channel-id X participant add bob`.
 - **Channel membership gate** — non-participants cannot `send`, `messages`, `participants`, `participant add`, or `participant remove`; archived channels are readonly for mutations but `messages`/`participants`/`list --all` still work.
 - **Channel CLI output** — create prints `channel-id\n`; archive `archived <id>\n`; delete `deleted <id>\n`; send `sent message <id>\n`; participant add `added <handle>\n`; remove self `left <channel-id>\n`; remove other `removed <handle>\n`; list human table + gray count footer (TTY); `--json` arrays without ANSI; errors single stderr line `Error:` prefix, exit 1; every channel command appends `events.jsonl` with `command: channel`.
 - **Request.ChannelID** / **Request.ChannelName** — channel id and display name for multi-step channel setups and assertions.
@@ -127,9 +128,12 @@ tsk tests
 │   │   ├── active-only/          # archived hidden by default
 │   │   ├── all/                  # --all shows archived
 │   │   ├── json/                 # --json valid, no ANSI
-│   │   └── deleted-hidden/       # tombstoned absent from --all
+│   │   ├── deleted-hidden/       # tombstoned absent from --all
+│   │   ├── reject-parent-channel-id/  # parent --channel-id list → error
+│   │   └── reject-parent-user/   # parent --user list → error
 │   ├── archive/                  # channel archive
 │   │   ├── basic/                # dir move, status archived, excluded from default list
+│   │   ├── parent-channel-id/    # channel --channel-id X archive
 │   │   ├── readonly/             # send blocked
 │   │   ├── not-found/            # missing id → error
 │   │   └── already-archived/     # double archive → error
@@ -139,6 +143,11 @@ tsk tests
 │   │   └── not-found/            # missing id → error
 │   ├── send/                     # channel send
 │   │   ├── basic/                # participant sends; jsonl + counter
+│   │   ├── parent-channel-id/    # channel --channel-id X send
+│   │   ├── parent-user/          # channel --channel-id X --user bob send
+│   │   ├── same-channel-id/      # parent+leaf same --channel-id OK
+│   │   ├── conflict-channel-id/  # parent+leaf different --channel-id → conflict
+│   │   ├── conflict-user/        # parent+leaf different --user → conflict
 │   │   ├── not-member/           # non-participant → error
 │   │   ├── archived/             # archived → error
 │   │   ├── not-found/            # missing channel → error
@@ -146,6 +155,7 @@ tsk tests
 │   │   └── user-over-env/        # --user wins over TSK_USER
 │   ├── messages/                 # channel messages
 │   │   ├── human/                # chronological transcript
+│   │   ├── parent-channel-id/    # channel --channel-id X messages
 │   │   ├── json/                 # --json array
 │   │   ├── limit/                # --limit 1 last message
 │   │   ├── empty/                # no messages yet
@@ -154,6 +164,7 @@ tsk tests
 │   │   └── not-found/            # missing channel → error
 │   ├── participant/              # channel participant *
 │   │   ├── add/                  # add bob
+│   │   ├── parent-channel-id-add/ # channel --channel-id X participant add bob
 │   │   ├── add-dup/              # idempotent add
 │   │   ├── remove-self/          # leave without handle
 │   │   ├── remove-other/         # remove bob

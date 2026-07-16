@@ -26,32 +26,70 @@ func openChannelStore(home string) (chpkg.Store, error) {
 	return file.NewStore(file.Options{Home: home})
 }
 
+// channelOpts holds parent-level flags peeled before the subcommand
+// (e.g. tsk channel --channel-id X send …).
+type channelOpts struct {
+	channelID string
+	user      string
+}
+
+// mergeChannelFlag merges a parent-level flag with a leaf flag.
+// Conflict when both are set and differ; otherwise leaf wins if set, else parent.
+func mergeChannelFlag(name, parent, leaf string) (string, error) {
+	if parent != "" && leaf != "" && parent != leaf {
+		return "", fmt.Errorf("conflicting %s: parent %q vs %q", name, parent, leaf)
+	}
+	if leaf != "" {
+		return leaf, nil
+	}
+	return parent, nil
+}
+
 func runChannel(home string, args []string) error {
 	setCommand(currentCtx, "channel", args)
 
-	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
-		fmt.Print(channelHelp())
-		return nil
+	var opts channelOpts
+	remaining, err := lessflags.
+		String("--channel-id", &opts.channelID).
+		String("--user", &opts.user).
+		Help("-h,--help", channelHelp()).
+		HelpNoExit().
+		StopOnFirstArg().
+		Parse(args)
+	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
+		return channelFail(err)
 	}
-	switch args[0] {
+	if len(remaining) == 0 {
+		return channelFail(fmt.Errorf("tsk channel: subcommand required"))
+	}
+	switch remaining[0] {
 	case "create":
-		return runChannelCreate(home, args[1:])
+		return runChannelCreate(home, opts, remaining[1:])
 	case "list":
-		return runChannelList(home, args[1:])
+		if opts.channelID != "" {
+			return channelFail(fmt.Errorf("tsk channel list: --channel-id not accepted"))
+		}
+		if opts.user != "" {
+			return channelFail(fmt.Errorf("tsk channel list: --user not accepted"))
+		}
+		return runChannelList(home, remaining[1:])
 	case "archive":
-		return runChannelArchive(home, args[1:])
+		return runChannelArchive(home, opts, remaining[1:])
 	case "delete":
-		return runChannelDelete(home, args[1:])
+		return runChannelDelete(home, opts, remaining[1:])
 	case "send":
-		return runChannelSend(home, args[1:])
+		return runChannelSend(home, opts, remaining[1:])
 	case "messages":
-		return runChannelMessages(home, args[1:])
+		return runChannelMessages(home, opts, remaining[1:])
 	case "participants":
-		return runChannelParticipants(home, args[1:])
+		return runChannelParticipants(home, opts, remaining[1:])
 	case "participant":
-		return runChannelParticipant(home, args[1:])
+		return runChannelParticipant(home, opts, remaining[1:])
 	default:
-		return channelFail(fmt.Errorf("tsk channel: unknown subcommand %q", args[0]))
+		return channelFail(fmt.Errorf("tsk channel: unknown subcommand %q", remaining[0]))
 	}
 }
 
@@ -73,7 +111,7 @@ func channelSuccess(word string, tty bool) string {
 	return word
 }
 
-func runChannelCreate(home string, args []string) error {
+func runChannelCreate(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"create"}, args...))
 
 	var channelID, userHandle string
@@ -88,6 +126,14 @@ func runChannelCreate(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel create: %w", err))
+	}
+	userHandle, err = mergeChannelFlag("--user", opts.user, userHandle)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel create: %w", err))
 	}
 	if len(remaining) != 1 {
 		return channelFail(fmt.Errorf("tsk channel create: name required"))
@@ -188,8 +234,12 @@ func runChannelList(home string, args []string) error {
 	return nil
 }
 
-func runChannelArchive(home string, args []string) error {
+func runChannelArchive(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"archive"}, args...))
+
+	if opts.user != "" {
+		return channelFail(fmt.Errorf("tsk channel archive: --user not accepted"))
+	}
 
 	var channelID string
 	remaining, err := lessflags.
@@ -202,6 +252,10 @@ func runChannelArchive(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel archive: %w", err))
 	}
 	if len(remaining) != 0 {
 		return channelFail(fmt.Errorf("tsk channel archive: unexpected arguments"))
@@ -221,8 +275,12 @@ func runChannelArchive(home string, args []string) error {
 	return nil
 }
 
-func runChannelDelete(home string, args []string) error {
+func runChannelDelete(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"delete"}, args...))
+
+	if opts.user != "" {
+		return channelFail(fmt.Errorf("tsk channel delete: --user not accepted"))
+	}
 
 	var channelID string
 	remaining, err := lessflags.
@@ -235,6 +293,10 @@ func runChannelDelete(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel delete: %w", err))
 	}
 	if len(remaining) != 0 {
 		return channelFail(fmt.Errorf("tsk channel delete: unexpected arguments"))
@@ -254,7 +316,7 @@ func runChannelDelete(home string, args []string) error {
 	return nil
 }
 
-func runChannelSend(home string, args []string) error {
+func runChannelSend(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"send"}, args...))
 
 	var channelID, userHandle string
@@ -269,6 +331,14 @@ func runChannelSend(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel send: %w", err))
+	}
+	userHandle, err = mergeChannelFlag("--user", opts.user, userHandle)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel send: %w", err))
 	}
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel send: --channel-id required"))
@@ -298,7 +368,7 @@ func runChannelSend(home string, args []string) error {
 	return nil
 }
 
-func runChannelMessages(home string, args []string) error {
+func runChannelMessages(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"messages"}, args...))
 
 	var channelID, userHandle string
@@ -317,6 +387,14 @@ func runChannelMessages(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel messages: %w", err))
+	}
+	userHandle, err = mergeChannelFlag("--user", opts.user, userHandle)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel messages: %w", err))
 	}
 	if len(remaining) != 0 {
 		return channelFail(fmt.Errorf("tsk channel messages: unexpected arguments"))
@@ -368,7 +446,7 @@ func runChannelMessages(home string, args []string) error {
 	return nil
 }
 
-func runChannelParticipants(home string, args []string) error {
+func runChannelParticipants(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"participants"}, args...))
 
 	var channelID, userHandle string
@@ -385,6 +463,14 @@ func runChannelParticipants(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel participants: %w", err))
+	}
+	userHandle, err = mergeChannelFlag("--user", opts.user, userHandle)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel participants: %w", err))
 	}
 	if len(remaining) != 0 {
 		return channelFail(fmt.Errorf("tsk channel participants: unexpected arguments"))
@@ -424,7 +510,7 @@ func runChannelParticipants(home string, args []string) error {
 	return nil
 }
 
-func runChannelParticipant(home string, args []string) error {
+func runChannelParticipant(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"participant"}, args...))
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
@@ -433,9 +519,9 @@ func runChannelParticipant(home string, args []string) error {
 	}
 	switch args[0] {
 	case "add":
-		return runChannelParticipantAdd(home, args[1:])
+		return runChannelParticipantAdd(home, opts, args[1:])
 	case "remove":
-		return runChannelParticipantRemove(home, args[1:])
+		return runChannelParticipantRemove(home, opts, args[1:])
 	default:
 		return channelFail(fmt.Errorf("tsk channel participant: unknown subcommand %q", args[0]))
 	}
@@ -450,7 +536,7 @@ func requireParticipant(parts []chpkg.Participant, channelID, handle string) err
 	return fmt.Errorf("not a participant in channel %q", channelID)
 }
 
-func runChannelParticipantAdd(home string, args []string) error {
+func runChannelParticipantAdd(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"participant", "add"}, args...))
 
 	var channelID, userHandle string
@@ -465,6 +551,14 @@ func runChannelParticipantAdd(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel participant add: %w", err))
+	}
+	userHandle, err = mergeChannelFlag("--user", opts.user, userHandle)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel participant add: %w", err))
 	}
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel participant add: --channel-id required"))
@@ -499,7 +593,7 @@ func runChannelParticipantAdd(home string, args []string) error {
 	return nil
 }
 
-func runChannelParticipantRemove(home string, args []string) error {
+func runChannelParticipantRemove(home string, opts channelOpts, args []string) error {
 	setCommand(currentCtx, "channel", append([]string{"participant", "remove"}, args...))
 
 	var channelID, userHandle string
@@ -514,6 +608,14 @@ func runChannelParticipantRemove(home string, args []string) error {
 			return nil
 		}
 		return channelFail(err)
+	}
+	channelID, err = mergeChannelFlag("--channel-id", opts.channelID, channelID)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel participant remove: %w", err))
+	}
+	userHandle, err = mergeChannelFlag("--user", opts.user, userHandle)
+	if err != nil {
+		return channelFail(fmt.Errorf("tsk channel participant remove: %w", err))
 	}
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel participant remove: --channel-id required"))
@@ -562,7 +664,12 @@ func runChannelParticipantRemove(home string, args []string) error {
 }
 
 func channelHelp() string {
-	return `Usage: tsk channel <command> [arguments]
+	return `Usage: tsk channel [options] <command> [arguments]
+
+Options:
+  --channel-id ID   channel id (for commands that need one)
+  --user HANDLE     acting user (default: TSK_USER or $USER)
+  -h, --help        show this help
 
 Subcommands:
   create        create a new channel
@@ -573,8 +680,6 @@ Subcommands:
   messages      show channel messages
   participants  list channel participants
   participant   add or remove participants
-
-  -h, --help    show this help
 `
 }
 
