@@ -533,7 +533,7 @@ func requireParticipant(parts []chpkg.Participant, channelID, handle string) err
 			return nil
 		}
 	}
-	return fmt.Errorf("not a participant in channel %q", channelID)
+	return fmt.Errorf("%q is not a participant in channel %q", handle, channelID)
 }
 
 func runChannelParticipantAdd(home string, opts channelOpts, args []string) error {

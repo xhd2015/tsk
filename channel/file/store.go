@@ -311,7 +311,7 @@ func isParticipant(parts []channel.Participant, handle string) bool {
 
 func requireParticipant(parts []channel.Participant, chID, handle string) error {
 	if !isParticipant(parts, handle) {
-		return fmt.Errorf("not a participant in channel %q", chID)
+		return fmt.Errorf("%q is not a participant in channel %q", handle, chID)
 	}
 	return nil
 }

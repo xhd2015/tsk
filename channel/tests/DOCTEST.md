@@ -84,6 +84,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/xhd2015/tsk/channel"
