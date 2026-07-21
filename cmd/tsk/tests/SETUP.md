@@ -111,7 +111,7 @@ func getTskBin(t *testing.T) string {
 		t.Fatal(err)
 	}
 	bin := filepath.Join(dir, "tsk")
-	cmd := exec.Command("go", "build", "-o", bin, "./cmd/tsk")
+	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", bin, "./cmd/tsk")
 	cmd.Dir = tskModRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {

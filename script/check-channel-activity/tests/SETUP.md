@@ -112,7 +112,7 @@ func getCheckBin(t *testing.T) string {
 		t.Fatal(err)
 	}
 	bin := filepath.Join(dir, "check-channel-activity")
-	cmd := exec.Command("go", "build", "-o", bin, "./script/check-channel-activity")
+	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", bin, "./script/check-channel-activity")
 	cmd.Dir = checkModRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {
