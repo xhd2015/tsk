@@ -12,6 +12,10 @@ create "add dark mode" -> advance 1 -> inbox/1-in_process-add-dark-mode/
 2. `tsk advance 1`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "add dark mode"
 	id := createTask(t, req, req.Title, "", nil)

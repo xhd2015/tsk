@@ -13,6 +13,10 @@
 2. Run `tsk status --format=agent <id>`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "agent at user followup"
 	id := createTask(t, req, req.Title, "", nil)

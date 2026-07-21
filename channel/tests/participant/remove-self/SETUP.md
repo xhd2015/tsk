@@ -11,6 +11,12 @@ seed -> add bob -> RemoveParticipant(bob) by alice -> alice only
 1. Seed; add bob; remove bob as alice.
 
 ```go
+import (
+	"context"
+
+	"github.com/xhd2015/tsk/channel"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	seedChannel(t, req, "Team", "team-ch")
 	store := newFileStore(t, req)

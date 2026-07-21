@@ -21,7 +21,7 @@ state, and optionally loops with `--forever`.
 - **Dry-run** — `--dry-run` prints `status: would notify (dry-run)` without exec or state write.
 - **Forever loop** — `--forever` repeats check → sleep `--interval` (default `1m`) until signal; each tick prints status block.
 - **Test hook** — `--max-ticks N` (undocumented in help) stops forever loop after N ticks; for doctest only.
-- **Session fixtures** — `DOCTEST_SESSION_ID` keys `{cache}/bin/check-channel-activity` built once per `doctest test` run with file lock.
+- **Process-local binary** — `getCheckBin` builds once per process under an in-memory mutex into `os.MkdirTemp("", "check-channel-activity-doctest-bin-")` (one-process suite; no session disk flock).
 - **Work root** — temp dir per leaf; holds isolated `TSK_HOME`, notify marker path, and touch script for exec verification.
 
 ## Tree Overview

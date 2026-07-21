@@ -12,6 +12,10 @@ create active-one + archived-one -> List (no All) -> active-one only
 2. List without All flag.
 
 ```go
+import (
+	"context"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	seedChannel(t, req, "Active One", "active-one")
 	seedChannel(t, req, "Archived One", "archived-one")

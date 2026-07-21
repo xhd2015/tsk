@@ -13,6 +13,12 @@
 3. Run second check via `req.Args`.
 
 ```go
+import (
+	"path/filepath"
+	"strings"
+	"os"
+)
+
 const midActivityTS = "2026-07-13T12:00:00Z"
 
 func Setup(t *testing.T, req *Request) error {

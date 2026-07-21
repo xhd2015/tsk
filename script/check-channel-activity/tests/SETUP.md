@@ -1,17 +1,18 @@
 # Scenario
 
-**Feature**: isolated TSK_HOME per test; build check-channel-activity binary once per doctest session
+**Feature**: isolated TSK_HOME per test; build check-channel-activity binary once per process
 
 ```
-# temp WorkRoot + {WorkRoot}/.tsk per leaf; session-cached binary
+# temp WorkRoot + {WorkRoot}/.tsk per leaf; process-local binary (mutex memo)
 check-channel-activity --channel-id ID --exec-if-idle-1h "LINE" -> shellwords parse -> exec + state
 ```
 
 ## Preconditions
 
-- Module root `github.com/xhd2015/tsk` is three levels above the test tree (`DOCTEST_ROOT/../../..`).
+- Module root `github.com/xhd2015/tsk` is three levels above the test tree (`d.DOCTEST_ROOT/../../..`).
 - Go toolchain on PATH.
-- Session cache: `{DOCTEST_FIXTURE_ROOT or ~/Library/Caches/doctest/fixtures}/{DOCTEST_SESSION_ID}/bin/check-channel-activity` (file-locked build).
+- Process-local binary: `getCheckBin` builds once under an in-memory mutex into
+  `os.MkdirTemp("", "check-channel-activity-doctest-bin-")` (not session disk flock).
 - Child env sets `TSK_HOME={WorkRoot}/.tsk`; strips parent `TSK_HOME` to avoid leakage.
 
 ## Context
@@ -29,9 +30,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/xhd2015/doctest/session"
 )
 
 const (
@@ -39,6 +42,15 @@ const (
 	channelName    = "Eng Alerts"
 	oldActivityTS  = "2026-07-09T01:00:00Z"
 	oldCreatedAtTS = "2026-07-09T00:30:00Z"
+)
+
+// Process-local check-channel-activity binary (one-process suite; in-memory mutex).
+var (
+	checkBinMu   sync.Mutex
+	checkBinPath string
+	checkBinErr  error
+	// checkModRoot set from d.DOCTEST_ROOT in root Setup.
+	checkModRoot string
 )
 
 type channelParticipant struct {
@@ -81,77 +93,47 @@ func findModuleRoot(dir string) string {
 	}
 }
 
-func fixtureCacheBase(t *testing.T) string {
-	t.Helper()
-	base := os.Getenv("DOCTEST_FIXTURE_ROOT")
-	if base != "" {
-		return base
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return filepath.Join(home, "Library", "Caches", "doctest", "fixtures")
-}
-
-func fixtureSessionRoot(t *testing.T) string {
-	t.Helper()
-	return filepath.Join(fixtureCacheBase(t), DOCTEST_SESSION_ID)
-}
-
-func sessionCheckBin(t *testing.T) string {
-	t.Helper()
-	return filepath.Join(fixtureSessionRoot(t), "bin", "check-channel-activity")
-}
-
-func withFlock(t *testing.T, lockPath string, fn func()) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("mkdir lock dir: %v", err)
-	}
-	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
-	if err != nil {
-		t.Fatalf("open lock %s: %v", lockPath, err)
-	}
-	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		t.Fatalf("flock %s: %v", lockPath, err)
-	}
-	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
-	fn()
-}
-
 func getCheckBin(t *testing.T) string {
 	t.Helper()
-	bin := sessionCheckBin(t)
-	if _, err := os.Stat(bin); err == nil {
-		return bin
+	checkBinMu.Lock()
+	defer checkBinMu.Unlock()
+	if checkBinPath != "" || checkBinErr != nil {
+		if checkBinErr != nil {
+			t.Fatal(checkBinErr)
+		}
+		return checkBinPath
 	}
-	lockPath := filepath.Join(fixtureSessionRoot(t), "bin", ".check-channel-activity.lock")
-	withFlock(t, lockPath, func() {
-		if _, err := os.Stat(bin); err == nil {
-			return
-		}
-		modRoot := findModuleRoot(DOCTEST_ROOT)
-		if modRoot == "" {
-			t.Fatal("find module root")
-		}
-		cmd := exec.Command("go", "build", "-o", bin, "./script/check-channel-activity")
-		cmd.Dir = modRoot
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("build check-channel-activity: %v\n%s", err, out)
-		}
-		warm := exec.Command(bin, "--help")
-		warm.Env = append(os.Environ(), "CHECK_CHANNEL_ACTIVITY_WARMED=1")
-		warm.Stdout = nil
-		warm.Stderr = nil
-		_ = warm.Run()
-	})
+	if checkModRoot == "" {
+		t.Fatal("checkModRoot unset; root Setup must run first")
+	}
+	dir, err := os.MkdirTemp("", "check-channel-activity-doctest-bin-")
+	if err != nil {
+		checkBinErr = err
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "check-channel-activity")
+	cmd := exec.Command("go", "build", "-o", bin, "./script/check-channel-activity")
+	cmd.Dir = checkModRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		checkBinErr = fmt.Errorf("build check-channel-activity: %v\n%s", err, out)
+		t.Fatal(checkBinErr)
+	}
+	warm := exec.Command(bin, "--help")
+	warm.Env = append(os.Environ(), "CHECK_CHANNEL_ACTIVITY_WARMED=1")
+	warm.Stdout = nil
+	warm.Stderr = nil
+	_ = warm.Run()
+	checkBinPath = bin
 	return bin
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	if root := findModuleRoot(d.DOCTEST_ROOT); root != "" {
+		checkModRoot = root
+	} else {
+		checkModRoot = filepath.Clean(filepath.Join(d.DOCTEST_ROOT, "..", "..", ".."))
+	}
 	workRoot, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		return fmt.Errorf("resolve work root: %w", err)
@@ -519,10 +501,6 @@ func assertHelpOK(t *testing.T, resp *Response) {
 
 func ensureCheckHelpersUsed() {
 	_ = findModuleRoot
-	_ = fixtureCacheBase
-	_ = fixtureSessionRoot
-	_ = sessionCheckBin
-	_ = withFlock
 	_ = getCheckBin
 	_ = checkEnvDrop
 	_ = envKey

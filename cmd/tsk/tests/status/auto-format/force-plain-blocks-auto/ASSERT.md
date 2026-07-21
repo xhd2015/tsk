@@ -10,6 +10,10 @@
 - 0
 
 ```go
+import (
+	"strings"
+)
+
 func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertAutoFormatOK(t, resp, err)
 	assertNotAgentFactBlock(t, resp.Stdout)

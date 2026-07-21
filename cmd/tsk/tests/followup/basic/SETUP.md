@@ -12,6 +12,10 @@ pipeline to summary -> tsk followup <id> "please revise scope"
 2. Run `tsk followup <id> "please revise scope"`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "needs followup"
 	req.Message = "please revise scope"

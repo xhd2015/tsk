@@ -11,6 +11,11 @@
 - N/A (direct store call)
 
 ```go
+import (
+	"path/filepath"
+	"os"
+)
+
 func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	if err != nil {
 		t.Fatal(err)

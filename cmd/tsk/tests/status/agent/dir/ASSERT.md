@@ -27,6 +27,11 @@ dir: <exact absolute path from stdout>
 - 0
 
 ```go
+import (
+	"path/filepath"
+	"strings"
+)
+
 func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
 	assertStatusOK(t, resp)

@@ -13,6 +13,10 @@ create -> advance x2 -> clarify add x2 -> clarify confirm -y -> implementation
 3. Run `tsk clarify confirm <id> -y`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "clarify me"
 	id := createTask(t, req, req.Title, "", nil)

@@ -12,6 +12,10 @@ create -> stage 1 implementation -> error; dir still *-create-*
 2. `tsk stage 1 implementation` (invalid jump).
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "add dark mode"
 	id := createTask(t, req, req.Title, "", nil)

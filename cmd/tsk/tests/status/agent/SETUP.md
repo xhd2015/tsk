@@ -12,7 +12,14 @@ tsk status --format=agent <id> -> spine with [doing]/(name)/bare marks + back li
 Shared helpers for agent-format diagram structure, node marks, facts block (id → title → stage → terminal → topic → dir), and no-rectangle chrome. Prefer structural token checks over pixel-perfect spacing on row 2.
 
 ```go
-import "regexp"
+import (
+	"fmt"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/xhd2015/doctest/assert"
+)
 
 var agentSpineStages = []string{
 	"create", "in_process", "clarification", "implementation",

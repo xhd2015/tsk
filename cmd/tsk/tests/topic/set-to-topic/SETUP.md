@@ -13,6 +13,10 @@ create (inbox) -> topic mkdir eng/backend -> topic set 1 eng/backend
 3. `tsk topic set 1 eng/backend`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "move me"
 	topic := "eng/backend"

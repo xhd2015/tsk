@@ -30,7 +30,7 @@ participants), and append-only `events.jsonl` auditing.
 - **Request.Args** — CLI arguments passed to `tsk` (subcommand + flags + positionals).
 - **Request.TaskID** — task id for multi-step setups and assertions.
 - **Request.ExtraEnv** — optional `KEY=value` strings appended to the child `tsk` process env (after `tskEnv` strips host agent / format-override vars for stable defaults).
-- **Session fixtures** — doctest injects `DOCTEST_SESSION_ID`; `getTskBin` builds once per session to `{cache}/bin/tsk` with file lock across leaf processes.
+- **Process-local binary** — `getTskBin` builds `tsk` once per process under an in-memory mutex into `os.MkdirTemp("", "tsk-doctest-bin-")` (one-process suite; no session disk flock).
 - **channels/** — under `TSK_HOME`; layout `index/<channel-id>` (line `active/<id>` or `archive/<id>`), `active/<id>/` and `archive/<id>/` each with `channel.json` (metadata only), `participants.jsonl`, `messages.jsonl`, `msg-counter`; `tombstones/<id>.json` blocks id reuse after delete.
 - **channel.json** — metadata only: `id`, `name`, `status` (`active`|`archived`), `created_at`, `updated_at` (no embedded `participants`).
 - **participants.jsonl** — one `{"handle","joined_at"}` per line, sorted by `handle` on write; on create, creator handle only (no `agent` auto-join).

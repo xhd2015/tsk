@@ -13,6 +13,11 @@
 2. Run with LINE embedding quoted `"hello world"` argument.
 
 ```go
+import (
+	"path/filepath"
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "stale", CreatedAt: oldActivityTS,

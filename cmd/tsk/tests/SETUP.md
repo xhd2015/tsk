@@ -1,9 +1,9 @@
 # Scenario
 
-**Feature**: isolated TSK_HOME per test; build tsk binary once per doctest session
+**Feature**: isolated TSK_HOME per test; build tsk binary once per process
 
 ```
-# temp WorkRoot + {WorkRoot}/.tsk per leaf; session-cached tsk binary
+# temp WorkRoot + {WorkRoot}/.tsk per leaf; process-local tsk binary (mutex memo)
 # tskEnv strips CODEX_THREAD_ID / PI_CODING_AGENT / TSK_STATUS_FORMAT from parent env
 # so bare `status` stays diagram-stable under host agents; leaves re-inject via ExtraEnv
 tsk <subcommand> -> stdout/stderr + filesystem side effects under TSK_HOME
@@ -13,7 +13,8 @@ tsk <subcommand> -> stdout/stderr + filesystem side effects under TSK_HOME
 
 - The tsk Go module root is two levels above the test tree (`github.com/xhd2015/tsk`).
 - Go toolchain is available on PATH.
-- Session cache: `{DOCTEST_FIXTURE_ROOT or ~/Library/Caches/doctest/fixtures}/{DOCTEST_SESSION_ID}/bin/tsk` (file-locked build).
+- Process-local binary: `getTskBin` builds once under an in-memory mutex into
+  `os.MkdirTemp("", "tsk-doctest-bin-")` (not session disk flock).
 - Child env always clears host-agent detection and `TSK_STATUS_FORMAT` unless a leaf sets `Request.ExtraEnv`.
 
 ## Context
@@ -25,20 +26,29 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
+	"sync"
 	"testing"
 	"time"
 	"unicode"
 
 	"github.com/xhd2015/doctest/assert"
+	"github.com/xhd2015/doctest/session"
 )
 
 const tskDate = "2026-07-09"
+
+// Process-local tsk binary (one-process suite; in-memory mutex, not session flock).
+var (
+	tskBinMu   sync.Mutex
+	tskBinPath string
+	tskBinErr  error
+	// tskModRoot set from d.DOCTEST_ROOT in root Setup.
+	tskModRoot string
+)
 
 type taskJSON struct {
 	ID           int              `json:"id"`
@@ -82,72 +92,42 @@ func findModuleRoot(dir string) string {
 	}
 }
 
-func fixtureCacheBase(t *testing.T) string {
-	t.Helper()
-	base := os.Getenv("DOCTEST_FIXTURE_ROOT")
-	if base != "" {
-		return base
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return filepath.Join(home, "Library", "Caches", "doctest", "fixtures")
-}
-
-func fixtureSessionRoot(t *testing.T) string {
-	t.Helper()
-	return filepath.Join(fixtureCacheBase(t), DOCTEST_SESSION_ID)
-}
-
-func sessionTskBin(t *testing.T) string {
-	t.Helper()
-	return filepath.Join(fixtureSessionRoot(t), "bin", "tsk")
-}
-
-func withFlock(t *testing.T, lockPath string, fn func()) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("mkdir lock dir: %v", err)
-	}
-	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
-	if err != nil {
-		t.Fatalf("open lock %s: %v", lockPath, err)
-	}
-	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		t.Fatalf("flock %s: %v", lockPath, err)
-	}
-	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
-	fn()
-}
-
 func getTskBin(t *testing.T) string {
 	t.Helper()
-	bin := sessionTskBin(t)
-	if _, err := os.Stat(bin); err == nil {
-		return bin
+	tskBinMu.Lock()
+	defer tskBinMu.Unlock()
+	if tskBinPath != "" || tskBinErr != nil {
+		if tskBinErr != nil {
+			t.Fatal(tskBinErr)
+		}
+		return tskBinPath
 	}
-	lockPath := filepath.Join(fixtureSessionRoot(t), "bin", ".lock")
-	withFlock(t, lockPath, func() {
-		if _, err := os.Stat(bin); err == nil {
-			return
-		}
-		modRoot := filepath.Dir(filepath.Dir(DOCTEST_ROOT))
-		if modRoot == "" {
-			modRoot = findModuleRoot(DOCTEST_ROOT)
-		}
-		cmd := exec.Command("go", "build", "-o", bin, "./cmd/tsk")
-		cmd.Dir = modRoot
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("build tsk: %v\n%s", err, out)
-		}
-	})
+	if tskModRoot == "" {
+		t.Fatal("tskModRoot unset; root Setup must run first")
+	}
+	dir, err := os.MkdirTemp("", "tsk-doctest-bin-")
+	if err != nil {
+		tskBinErr = err
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "tsk")
+	cmd := exec.Command("go", "build", "-o", bin, "./cmd/tsk")
+	cmd.Dir = tskModRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		tskBinErr = fmt.Errorf("build tsk: %v\n%s", err, out)
+		t.Fatal(tskBinErr)
+	}
+	tskBinPath = bin
 	return bin
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
+	if root := findModuleRoot(d.DOCTEST_ROOT); root != "" {
+		tskModRoot = root
+	} else {
+		tskModRoot = filepath.Clean(filepath.Join(d.DOCTEST_ROOT, "..", ".."))
+	}
 	workRoot, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		return fmt.Errorf("resolve work root: %w", err)
@@ -655,10 +635,7 @@ func globFollowupFiles(t *testing.T, taskDir string) []string {
 
 func ensureHelpersUsed() {
 	_ = findModuleRoot
-	_ = fixtureCacheBase
-	_ = fixtureSessionRoot
-	_ = sessionTskBin
-	_ = withFlock
+	_ = getTskBin
 	_ = tskEnvBaseDrop
 	_ = envKey
 	_ = filterEnvKeys

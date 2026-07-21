@@ -11,6 +11,10 @@
 - 0
 
 ```go
+import (
+	"strings"
+)
+
 func Assert(t *testing.T, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
 	assertStatusOK(t, resp)

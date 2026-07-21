@@ -18,7 +18,15 @@ tsk status [--format=diagram|agent] [--color] [--plain] <id> -> pipeline view on
 Shared helpers for box-line assertions, width limits, ANSI checks, golden stdout files, no-followup rail column alignment, box-only highlight, and advancing to terminal `done`. Agent-format helpers live under `status/agent/SETUP.md`. Auto-format selection leaves live under `status/auto-format/` (inject host env via `ExtraEnv`; root `tskEnv` clears agent vars for stable diagram defaults). Exact diagram geometry is sealed by `diagram-golden` / `plain-golden` `expected.txt` fixtures.
 
 ```go
-import "regexp"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/xhd2015/doctest/session"
+)
 
 var ansiEscapeRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
@@ -82,16 +90,20 @@ func assertBoxLineForStage(t *testing.T, stdout, stage string) {
 	t.Fatalf("expected box mid-row for stage %q (│/┤ %s │/├ or ASCII) in:\n%s", stage, stage, stdout)
 }
 
-func assertStdoutEqualsFile(t *testing.T, stdout, relPath string) {
+func assertStdoutEqualsFile(t *testing.T, d *session.Doctest, stdout, relPath string) {
 	t.Helper()
-	data, err := os.ReadFile(relPath)
+	path := relPath
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(d.DOCTEST_CASE, relPath)
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read golden %s: %v", relPath, err)
+		t.Fatalf("read golden %s: %v", path, err)
 	}
 	want := string(data)
 	if stdout != want {
 		t.Fatalf("stdout != %s\n--- got (%d bytes) ---\n%s\n--- want (%d bytes) ---\n%s",
-			relPath, len(stdout), stdout, len(want), want)
+			path, len(stdout), stdout, len(want), want)
 	}
 }
 

@@ -12,6 +12,10 @@ create with labels -> tsk show <id>
 2. `tsk show <id>`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "show me"
 	req.Labels = []string{"bug"}

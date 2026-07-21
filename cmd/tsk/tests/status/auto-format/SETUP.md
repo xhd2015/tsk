@@ -19,8 +19,10 @@ tsk status <id>  (+ env / flags) -> agent facts block  OR  diagram box art
 Helpers distinguish agent fact/spine output from diagram box art without depending on `status/agent/` helpers (sibling branch). All leaves create a task at `create` and run `status` with the scenario's env/flags.
 
 ```go
-import "regexp"
-
+import (
+	"regexp"
+	"strings"
+)
 var (
 	agentFactIDRE    = regexp.MustCompile(`(?m)^id\s*:`)
 	agentFactTitleRE = regexp.MustCompile(`(?m)^title\s*:`)

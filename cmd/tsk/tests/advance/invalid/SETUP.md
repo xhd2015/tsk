@@ -9,6 +9,7 @@ tsk stage <id> <stage> -> error when edge not allowed
 
 ```go
 func Setup(t *testing.T, req *Request) error {
+	markAdvanceTree()
 	ensureHelpersUsed()
 	return nil
 }

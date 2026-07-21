@@ -12,6 +12,10 @@ create --topic eng/backend -> topic set 1 --inbox -> inbox/, topic_path null
 2. `tsk topic set 1 --inbox`.
 
 ```go
+import (
+	"fmt"
+)
+
 func Setup(t *testing.T, req *Request) error {
 	req.Title = "return home"
 	req.Topic = "eng/backend"
