@@ -11,8 +11,8 @@
 | Branch | `master-2026-08-06-use-go-best-practice-to-review-current-project` |
 | Remote | `ssh://git@github.com/xhd2015/tsk.git` (`origin`) |
 | CI commit SHA | `f6aedbc9eb26292c836f976020bab40e637ac543` (short: `f6aedbc`) — workflow + helper |
-| Branch tip | `afdfa7e36855a06f90f27a2e45fb484177d429ff` (includes this note) |
-| Push result | success — upstream set; CI push `2b08c3d..f6aedbc`, note push `f6aedbc..afdfa7e` |
+| Branch tip | see `git rev-parse origin/master-2026-08-06-use-go-best-practice-to-review-current-project` (note commits trail CI commit) |
+| Push result | success — upstream set; CI push `2b08c3d..f6aedbc` (workflow); subsequent note commits on same branch |
 
 ## Paths changed (in `f6aedbc`)
 
