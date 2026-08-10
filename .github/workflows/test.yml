@@ -58,10 +58,12 @@ jobs:
 
       - name: Install kool (coverage package-table)
         # Released CLI (v0.0.136+): kool go coverage package-table
+        # install.sh puts the binary in /usr/local/bin; no "kool version" subcommand.
         run: |
           curl -fsSL https://github.com/xhd2015/kool/raw/master/install.sh | bash
           export PATH="/usr/local/bin:$HOME/go/bin:$HOME/.xgo/bin:$PATH"
-          kool version
+          command -v kool
+          kool go coverage package-table -h
 
       - name: Merge coverage and report
         # Merge only profiles that exist (partial success still reports).
