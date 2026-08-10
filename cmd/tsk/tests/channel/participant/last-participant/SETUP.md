@@ -11,7 +11,7 @@ creator alice only -> attempt remove alice -> error
 1. Create channel with sole creator; attempt remove alice.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Solo", "solo-ch")
 	req.Args = []string{"channel", "participant", "remove", "--channel-id", "solo-ch", "alice"}
 	return nil

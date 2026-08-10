@@ -11,7 +11,7 @@ create -> delete -> list --all -> channel absent
 1. Create and delete channel; list with `--all`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Gone", "gone-channel")
 	deleteChannel(t, req, "gone-channel")
 	req.Args = []string{"channel", "list", "--all"}

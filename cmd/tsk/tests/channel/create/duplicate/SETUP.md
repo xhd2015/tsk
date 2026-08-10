@@ -12,7 +12,7 @@ create eng-alerts -> create eng-alerts again -> error
 2. Attempt duplicate create with same `--channel-id`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Eng Alerts", "eng-alerts")
 	req.Args = createChannelArgs("Eng Alerts Again", "eng-alerts")
 	return nil

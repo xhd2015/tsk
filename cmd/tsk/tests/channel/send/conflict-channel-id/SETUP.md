@@ -14,7 +14,7 @@ tsk channel --channel-id ch-a send --channel-id ch-b "msg"
 2. Run send with parent `--channel-id ch-a` and leaf `--channel-id ch-b`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Channel A", "ch-a")
 	req.Args = []string{
 		"channel", "--channel-id", "ch-a",

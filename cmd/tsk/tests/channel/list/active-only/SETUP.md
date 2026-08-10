@@ -11,7 +11,7 @@ active + archived channels -> list (no --all) shows only active
 1. Create active and archived channels; list without `--all`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Active One", "active-one")
 	createChannel(t, req, "Archived One", "archived-one")
 	archiveChannel(t, req, "archived-one")

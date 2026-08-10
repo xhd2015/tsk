@@ -11,7 +11,7 @@ TSK_USER=alice -> create --user carol -> carol only in participants.jsonl (not a
 1. Run `tsk channel create "Carol Room" --user carol`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.ChannelName = "Carol Room"
 	req.Args = []string{"channel", "create", req.ChannelName, "--user", "carol"}
 	return nil

@@ -11,7 +11,7 @@ alice creates; bob reads messages -> error
 1. Create; switch to bob; messages.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Secret", "secret-ch")
 	withTSKUser(t, req, "bob")
 	req.Args = []string{"channel", "messages", "--channel-id", "secret-ch"}

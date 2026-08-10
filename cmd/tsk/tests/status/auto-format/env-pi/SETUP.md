@@ -14,7 +14,7 @@ tsk create -> PI_CODING_AGENT=1 tsk status <id> -> agent facts
 3. Run bare `tsk status <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	id := createForAutoFormat(t, req, "auto env pi")
 	setStatusEnv(req, "PI_CODING_AGENT=1")
 	req.Args = statusArgs(id)

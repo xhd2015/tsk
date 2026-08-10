@@ -12,7 +12,7 @@ create -> advance chain -> done -> tsk status --color <id>
 2. Run `tsk status --color <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "finished task"
 	id := createTask(t, req, req.Title, "", nil)
 	advanceToDone(t, req, id)

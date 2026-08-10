@@ -11,7 +11,7 @@ TSK_USER=alice -> send --user bob -> sender bob (not alice)
 1. Create as alice (default TSK_USER); add bob; send with `--user bob`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Override", "override-ch")
 	addParticipant(t, req, "override-ch", "bob")
 	req.Args = []string{"channel", "send", "--channel-id", "override-ch", "--user", "bob", "flag wins"}

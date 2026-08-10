@@ -11,7 +11,7 @@ create -> archive -> delete -> tombstone
 1. Create, archive, delete.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Old", "old-ch")
 	archiveChannel(t, req, "old-ch")
 	req.Args = []string{"channel", "delete", "--channel-id", "old-ch"}

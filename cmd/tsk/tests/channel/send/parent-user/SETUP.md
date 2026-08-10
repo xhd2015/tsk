@@ -15,7 +15,7 @@ tsk channel --channel-id team-ch --user bob send "from bob"
 2. Run `tsk channel --channel-id team-ch --user bob send "from bob"` (no leaf flags).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Team", "team-ch")
 	addParticipant(t, req, "team-ch", "bob")
 	req.Args = []string{"channel", "--channel-id", "team-ch", "--user", "bob", "send", "from bob"}

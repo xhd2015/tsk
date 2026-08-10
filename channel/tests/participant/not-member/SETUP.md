@@ -11,7 +11,7 @@ seed -> AddParticipant(bob) by carol (not a member) -> error
 1. Seed channel; carol attempts add.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	seedChannel(t, req, "Private", "private-ch")
 	req.Op = "participant_not_member"
 	req.ChannelID = "private-ch"

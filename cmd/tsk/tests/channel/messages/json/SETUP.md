@@ -11,7 +11,7 @@ send message -> messages --json -> array with message object
 1. Create, send, messages --json.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Data", "data-ch")
 	sendChannelMessage(t, req, "data-ch", "json body")
 	req.Args = []string{"channel", "messages", "--channel-id", "data-ch", "--json"}

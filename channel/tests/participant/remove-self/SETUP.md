@@ -17,7 +17,7 @@ import (
 	"github.com/xhd2015/tsk/channel"
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	seedChannel(t, req, "Team", "team-ch")
 	store := newFileStore(t, req)
 	ctx := context.Background()

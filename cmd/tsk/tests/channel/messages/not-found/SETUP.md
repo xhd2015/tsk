@@ -11,7 +11,7 @@ messages --channel-id missing -> error
 1. Messages without channel.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "messages", "--channel-id", "missing"}
 	return nil
 }

@@ -14,7 +14,7 @@ create -> … -> implementation -> tsk status --color <id>
 3. Assert green still on the implementation box; leading left-rail `│` is outside the box SGR.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "color box only"
 	id := createTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "implementation")

@@ -12,7 +12,7 @@ create -> advance x2 (clarification) -> tsk status <id>  # stdout captured (pipe
 2. Run `tsk status <id>` without `--color` (doctest captures stdout via pipe/buffer).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "no color pipe"
 	id := createTask(t, req, req.Title, "", nil)
 	advanceTask(t, req, id, "")

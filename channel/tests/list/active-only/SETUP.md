@@ -16,7 +16,7 @@ import (
 	"context"
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	seedChannel(t, req, "Active One", "active-one")
 	seedChannel(t, req, "Archived One", "archived-one")
 	store := newFileStore(t, req)

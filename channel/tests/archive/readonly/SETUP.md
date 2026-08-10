@@ -11,7 +11,7 @@ seed -> archive -> send -> error; no messages
 1. Seed channel; archive; attempt send.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	seedChannel(t, req, "Readonly", "readonly-ch")
 	req.Op = "archive_readonly"
 	req.ChannelID = "readonly-ch"

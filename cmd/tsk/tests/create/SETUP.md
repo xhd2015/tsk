@@ -16,7 +16,7 @@ tsk create [--label L]... [--topic PATH] <title> -> inbox/ or topics/<path>/ tas
 - Leaves set `req.Args` to the `create` invocation under test.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	return nil
 }

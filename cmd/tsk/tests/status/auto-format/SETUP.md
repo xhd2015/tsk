@@ -30,7 +30,7 @@ var (
 	agentFactDirRE   = regexp.MustCompile(`(?m)^dir\s*:`)
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureAutoFormatHelpersUsed()
 	return nil
 }

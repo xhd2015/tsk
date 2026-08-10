@@ -13,7 +13,7 @@ create A; create B + advance B -> list --stage create -> stdout "1\n"
 3. `tsk list --stage create`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	id1 := createTask(t, req, "stay", "", nil)
 	id2 := createTask(t, req, "go", "", nil)
 	advanceTask(t, req, id2, "")

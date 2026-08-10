@@ -13,7 +13,7 @@ tsk create -> tsk status --format=diagram <id>  # no --color; art is stage-indep
 3. Compare full stdout to `expected.txt` (exact equality).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "diagram golden"
 	id := createTask(t, req, req.Title, "", nil)
 	req.TaskID = id

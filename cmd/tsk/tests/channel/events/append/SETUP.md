@@ -11,7 +11,7 @@ tsk channel create -> events.jsonl command channel
 1. Run channel create.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = createChannelArgs("Audit Channel", "audit-ch")
 	return nil
 }

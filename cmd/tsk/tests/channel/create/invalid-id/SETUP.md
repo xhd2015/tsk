@@ -11,7 +11,7 @@ tsk channel create "X" --channel-id "BAD ID" -> error
 1. Create with invalid `--channel-id`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = createChannelArgs("X", "BAD ID")
 	return nil
 }

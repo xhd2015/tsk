@@ -12,7 +12,7 @@
 2. Run `--forever --interval 100ms` and send SIGINT via `req.SIGINTStop`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ts := recentActivityTS()
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "ping", CreatedAt: ts,

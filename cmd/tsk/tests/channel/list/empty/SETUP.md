@@ -11,7 +11,7 @@ tsk channel list -> empty table or zero-count footer
 1. Run `tsk channel list`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "list"}
 	return nil
 }

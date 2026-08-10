@@ -7,7 +7,7 @@ tsk channel archive --channel-id ID -> archive/<id>/; index archive/<id>
 ```
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureChannelHelpersUsed()
 	return nil
 }

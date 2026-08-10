@@ -11,7 +11,7 @@ tsk channel --help -> create, list, archive, delete, send, messages, participant
 1. Run channel root help.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "--help"}
 	return nil
 }

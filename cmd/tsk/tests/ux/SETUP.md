@@ -13,7 +13,7 @@ tsk advance -> stderr once; tsk create "title" -> stdout id\n + inbox side effec
 - `create` success stdout is task id and trailing newline only.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	return nil
 }

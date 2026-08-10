@@ -11,7 +11,7 @@ tsk create --label bug --label urgent "x" -> task.json labels ["bug","urgent"]
 1. Run `tsk create --label bug --label urgent "x"`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "x"
 	req.Labels = []string{"bug", "urgent"}
 	req.Args = createArgs(req.Title, "", req.Labels)

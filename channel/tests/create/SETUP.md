@@ -11,7 +11,7 @@ Creator -> Store.Create -> active/<id>/ with normalized layout
 1. Configure `req.Op=create` and channel name/id in leaf Setup.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureStoreHelpersUsed()
 	return nil
 }

@@ -87,6 +87,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/xhd2015/doctest/session"
 	"github.com/xhd2015/tsk/channel"
 	"github.com/xhd2015/tsk/channel/file"
 )
@@ -114,7 +115,8 @@ type Response struct {
 	StoreErr     error
 }
 
-func Run(t *testing.T, req *Request) (*Response, error) {
+func Run(t *testing.T, d *session.Doctest, req *Request) (*Response, error) {
+	_ = d
 	restore := pushStoreEnv(req)
 	defer restore()
 	store := newFileStore(t, req)

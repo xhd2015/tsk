@@ -7,7 +7,7 @@ participant --user HANDLE -> tsk channel send --channel-id ID <message...> -> me
 ```
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureChannelHelpersUsed()
 	return nil
 }

@@ -59,7 +59,7 @@ type channelTombstone struct {
 	DeletedAt string `json:"deleted_at"`
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureChannelHelpersUsed()
 	hasUser := false
 	for _, e := range req.ExtraEnv {

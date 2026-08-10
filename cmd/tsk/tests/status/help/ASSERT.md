@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
 	assertHelpOK(t, resp)
 	assertContains(t, resp.Stdout, "--format")

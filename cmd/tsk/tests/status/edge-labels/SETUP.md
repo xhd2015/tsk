@@ -12,7 +12,7 @@ create -> tsk status --color <id> -> claim, research, confirmed, questions, vert
 2. Run `tsk status --color <id>` (full pipeline diagram).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "edge labels"
 	id := createTask(t, req, req.Title, "", nil)
 	req.TaskID = id

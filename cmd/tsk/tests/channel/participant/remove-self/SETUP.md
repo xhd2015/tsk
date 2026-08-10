@@ -11,7 +11,7 @@ add bob; TSK_USER=bob; participant remove -> left team-ch\n
 1. Create; add bob; bob leaves.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Team", "team-ch")
 	addParticipant(t, req, "team-ch", "bob")
 	withTSKUser(t, req, "bob")

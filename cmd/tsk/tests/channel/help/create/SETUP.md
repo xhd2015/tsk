@@ -11,7 +11,7 @@ tsk channel create --help -> --channel-id flag
 1. Run create help.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "create", "--help"}
 	return nil
 }

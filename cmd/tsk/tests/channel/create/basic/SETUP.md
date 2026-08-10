@@ -11,7 +11,7 @@ TSK_USER=alice -> tsk channel create "Eng Alerts" -> eng-alerts
 1. Run `tsk channel create "Eng Alerts"`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.ChannelName = "Eng Alerts"
 	req.Args = createChannelArgs(req.ChannelName, "")
 	return nil

@@ -11,7 +11,7 @@ active + archived -> list --all shows both
 1. Seed channels; run `tsk channel list --all`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Active One", "active-one")
 	createChannel(t, req, "Archived One", "archived-one")
 	archiveChannel(t, req, "archived-one")

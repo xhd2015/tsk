@@ -14,7 +14,7 @@ tsk create --topic eng/backend "topic status fact" -> tsk status --format=agent 
 2. Run `tsk status --format=agent <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "topic status fact"
 	req.Topic = "eng/backend"
 	id := createTask(t, req, req.Title, req.Topic, nil)

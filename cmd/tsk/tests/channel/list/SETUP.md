@@ -7,7 +7,7 @@ tsk channel list [--json] [--all] -> table or JSON array; tombstoned never liste
 ```
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureChannelHelpersUsed()
 	return nil
 }

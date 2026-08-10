@@ -11,7 +11,7 @@ tsk create "audit me" -> events.jsonl line for create
 1. Run `tsk create "audit me"`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "audit me"
 	req.Args = []string{"create", req.Title}
 	return nil

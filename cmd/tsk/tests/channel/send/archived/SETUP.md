@@ -11,7 +11,7 @@ archive -> send -> error
 1. Create, archive, attempt send.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Frozen", "frozen-ch")
 	archiveChannel(t, req, "frozen-ch")
 	req.Args = []string{"channel", "send", "--channel-id", "frozen-ch", "nope"}

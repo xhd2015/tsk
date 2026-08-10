@@ -14,7 +14,7 @@ tsk create -> CODEX_THREAD_ID=t1 tsk status <id> -> agent facts (id/title/topic/
 3. Run bare `tsk status <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	id := createForAutoFormat(t, req, "auto env codex")
 	setStatusEnv(req, "CODEX_THREAD_ID=t1")
 	req.Args = statusArgs(id)

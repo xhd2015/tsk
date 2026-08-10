@@ -14,7 +14,7 @@ tsk channel --channel-id eng-alerts list
 2. Run `tsk channel --channel-id eng-alerts list`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Eng Alerts", "eng-alerts")
 	req.Args = []string{"channel", "--channel-id", "eng-alerts", "list"}
 	return nil

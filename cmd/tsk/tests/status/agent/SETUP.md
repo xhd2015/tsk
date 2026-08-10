@@ -30,7 +30,7 @@ var agentStageTokenRE = regexp.MustCompile(
 	`\(?\b(create|in_process|clarification|implementation|verification|summary|done)\b(?:\[doing\])?\)?`,
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureAgentHelpersUsed()
 	return nil
 }

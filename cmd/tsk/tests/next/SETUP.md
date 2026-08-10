@@ -8,7 +8,7 @@ tsk next -> <id>\n | (empty)
 ```
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	return nil
 }

@@ -14,7 +14,7 @@ tsk channel --channel-id team-ch --user alice send --user bob "msg"
 2. Run send with parent `--user alice` and leaf `--user bob` (both would be valid alone).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Team", "team-ch")
 	addParticipant(t, req, "team-ch", "bob")
 	req.Args = []string{

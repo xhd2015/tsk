@@ -11,7 +11,7 @@ create -> send -> archive -> messages still works
 1. Create, send, archive, read messages.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "History", "hist-ch")
 	sendChannelMessage(t, req, "hist-ch", "preserved")
 	archiveChannel(t, req, "hist-ch")

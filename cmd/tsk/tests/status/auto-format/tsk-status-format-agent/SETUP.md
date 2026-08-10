@@ -14,7 +14,7 @@ tsk create -> TSK_STATUS_FORMAT=agent tsk status <id> -> agent facts
 3. Run bare `tsk status <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	id := createForAutoFormat(t, req, "auto tsk format agent")
 	setStatusEnv(req, "TSK_STATUS_FORMAT=agent")
 	req.Args = statusArgs(id)

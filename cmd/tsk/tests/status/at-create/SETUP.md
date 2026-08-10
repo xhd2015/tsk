@@ -12,7 +12,7 @@ tsk create -> tsk status --color 1
 2. Run `tsk status --color <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "fresh task"
 	id := createTask(t, req, req.Title, "", nil)
 	req.TaskID = id

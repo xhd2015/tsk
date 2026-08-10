@@ -11,7 +11,7 @@
 Exec leaves verify that quoted tokens in LINE survive parsing and reach the shell.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureCheckHelpersUsed()
 	return nil
 }

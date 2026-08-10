@@ -7,7 +7,7 @@ TSK_USER=alice -> tsk channel create <name> [--channel-id ID] -> active/<id>/ + 
 ```
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureChannelHelpersUsed()
 	return nil
 }

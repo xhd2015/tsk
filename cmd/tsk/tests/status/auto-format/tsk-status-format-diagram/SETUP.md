@@ -15,7 +15,7 @@ tsk create -> env tsk status <id> -> diagram (not agent)
 3. Run bare `tsk status <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	id := createForAutoFormat(t, req, "auto tsk format diagram")
 	setStatusEnv(req,
 		"CODEX_THREAD_ID=t1",

@@ -11,7 +11,7 @@ create -> participants --json -> JSON array with alice only
 1. Create; participants --json.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Roster", "roster-ch")
 	req.Args = []string{"channel", "participants", "--channel-id", "roster-ch", "--json"}
 	return nil

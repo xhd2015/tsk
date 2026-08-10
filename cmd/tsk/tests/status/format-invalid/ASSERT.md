@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
 	if resp.ExitCode != 1 {
 		t.Fatalf("expected exit 1 for invalid --format, got %d stderr=%q stdout=%q",

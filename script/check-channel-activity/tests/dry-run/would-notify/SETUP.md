@@ -12,7 +12,7 @@ check-channel-activity --dry-run -> status: would notify (dry-run)
 2. Run with `--dry-run`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "stale", CreatedAt: oldActivityTS,
 	}}

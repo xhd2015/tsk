@@ -13,7 +13,7 @@ tsk channel --user alice list
 1. Run `tsk channel --user alice list` (empty or seeded home both OK; reject is parse-time).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "--user", "alice", "list"}
 	return nil
 }

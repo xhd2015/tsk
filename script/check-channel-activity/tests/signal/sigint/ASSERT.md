@@ -14,7 +14,7 @@ explanation: starts subprocess, waits for signal handling
 - 0
 
 ```go
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
 	if resp.ExitCode != 0 {
 		t.Fatalf("exit code %d stdout=%q stderr=%q", resp.ExitCode, resp.Stdout, resp.Stderr)

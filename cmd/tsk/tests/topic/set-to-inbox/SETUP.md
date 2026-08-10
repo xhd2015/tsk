@@ -16,7 +16,7 @@ import (
 	"fmt"
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "return home"
 	req.Topic = "eng/backend"
 	id := createTask(t, req, req.Title, req.Topic, nil)

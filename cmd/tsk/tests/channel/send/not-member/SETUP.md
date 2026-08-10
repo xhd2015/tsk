@@ -11,7 +11,7 @@ alice creates; bob (TSK_USER) tries send -> error
 1. Create as alice; switch to bob; send.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Private", "private-ch")
 	withTSKUser(t, req, "bob")
 	req.Args = []string{"channel", "send", "--channel-id", "private-ch", "hi"}

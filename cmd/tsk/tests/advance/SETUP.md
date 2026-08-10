@@ -12,7 +12,7 @@ tsk advance <id> [--note N] -> stage transition create→in_process→...
 - Leaves that test advance run `create` in Setup unless testing invalid transitions.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	return nil
 }

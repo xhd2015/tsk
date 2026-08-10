@@ -11,7 +11,7 @@ tsk create "add dark mode" -> inbox/1-create-add-dark-mode/
 1. Run `tsk create "add dark mode"`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "add dark mode"
 	req.Args = []string{"create", req.Title}
 	return nil

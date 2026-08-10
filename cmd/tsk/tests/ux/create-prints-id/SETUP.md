@@ -11,7 +11,7 @@ tsk create "hello" -> stdout "1\n"; inbox task dir created
 1. Run `tsk create "hello"`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "hello"
 	req.Args = []string{"create", req.Title}
 	return nil

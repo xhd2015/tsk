@@ -16,7 +16,7 @@ import (
 	"fmt"
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "finish line"
 	id := createTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "summary")

@@ -11,7 +11,7 @@ send --channel-id missing -> error
 1. Send without creating channel.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "send", "--channel-id", "missing", "hi"}
 	return nil
 }

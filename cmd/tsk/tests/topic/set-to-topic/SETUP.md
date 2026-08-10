@@ -17,7 +17,7 @@ import (
 	"fmt"
 )
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "move me"
 	topic := "eng/backend"
 	req.Topic = topic

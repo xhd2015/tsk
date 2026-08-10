@@ -13,7 +13,7 @@ tsk create "auto bare human" -> tsk status <id> -> diagram box art
 2. Run bare `tsk status <id>` with no format flags and no host-agent ExtraEnv.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	id := createForAutoFormat(t, req, "auto bare human")
 	// ExtraEnv intentionally empty: host agent vars already stripped by tskEnv
 	req.Args = statusArgs(id)

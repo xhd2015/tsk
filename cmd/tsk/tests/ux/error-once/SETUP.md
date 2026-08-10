@@ -11,7 +11,7 @@ tsk advance -> stderr contains "task id required" exactly once; exit 1
 1. Run `tsk advance` with no task id.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"advance"}
 	return nil
 }

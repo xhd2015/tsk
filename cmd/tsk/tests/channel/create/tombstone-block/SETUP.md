@@ -11,7 +11,7 @@ create -> delete -> create same id -> error; tombstone remains
 1. Create `eng-alerts`, delete it, attempt recreate.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Eng Alerts", "eng-alerts")
 	deleteChannel(t, req, "eng-alerts")
 	req.Args = createChannelArgs("Eng Alerts", "eng-alerts")

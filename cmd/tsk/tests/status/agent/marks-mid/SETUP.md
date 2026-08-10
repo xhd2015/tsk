@@ -13,7 +13,7 @@ create -> … -> implementation -> tsk status --format=agent <id>
 2. Run `tsk status --format=agent <id>`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "agent marks mid"
 	id := createTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "implementation")

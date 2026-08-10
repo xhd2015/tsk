@@ -34,7 +34,7 @@ func stripANSI(s string) string {
 	return ansiEscapeRE.ReplaceAllString(s, "")
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	ensureStatusHelpersUsed()
 	return nil

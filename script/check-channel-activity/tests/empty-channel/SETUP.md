@@ -12,7 +12,7 @@
 2. Run one-shot check.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.LastActivity = writeActiveChannel(t, req, oldCreatedAtTS, nil)
 	req.Args = defaultCheckArgs(req)
 	return nil

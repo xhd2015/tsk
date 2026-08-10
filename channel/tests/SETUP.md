@@ -61,7 +61,7 @@ type channelTombstone struct {
 	DeletedAt string `json:"deleted_at"`
 }
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	workRoot, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		return fmt.Errorf("resolve work root: %w", err)

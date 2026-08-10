@@ -11,7 +11,7 @@ alice channel; charlie tries participant add -> error
 1. Create; charlie tries add.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Closed", "closed-ch")
 	withTSKUser(t, req, "charlie")
 	req.Args = []string{"channel", "participant", "add", "--channel-id", "closed-ch", "dave"}

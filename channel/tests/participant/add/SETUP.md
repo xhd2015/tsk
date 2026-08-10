@@ -11,7 +11,7 @@ seed -> AddParticipant(bob) by alice -> roster alice,bob sorted
 1. Seed channel; add bob.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	seedChannel(t, req, "Team", "team-ch")
 	req.Op = "participant_add"
 	req.ChannelID = "team-ch"

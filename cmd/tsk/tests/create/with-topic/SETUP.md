@@ -11,7 +11,7 @@ tsk create --topic eng/backend "x" -> topics/eng/backend/1-create-x/
 1. Run `tsk create --topic eng/backend "x"`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "x"
 	req.Topic = "eng/backend"
 	req.Args = []string{"create", "--topic", req.Topic, req.Title}

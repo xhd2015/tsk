@@ -12,7 +12,7 @@ check-channel-activity -> reads messages.jsonl -> status: active -> no exec
 Leaves seed an active channel with a message timestamp within the default `1h` idle window.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureCheckHelpersUsed()
 	return nil
 }

@@ -14,7 +14,7 @@ tsk channel --channel-id eng-alerts archive
 2. Run `tsk channel --channel-id eng-alerts archive` (no leaf `--channel-id`).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Eng Alerts", "eng-alerts")
 	req.Args = []string{"channel", "--channel-id", "eng-alerts", "archive"}
 	return nil

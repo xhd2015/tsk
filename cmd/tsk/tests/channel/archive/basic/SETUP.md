@@ -11,7 +11,7 @@ create eng-alerts -> archive -> archived eng-alerts\n; excluded from default lis
 1. Create channel; run `tsk channel archive --channel-id eng-alerts`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Eng Alerts", "eng-alerts")
 	req.Args = []string{"channel", "archive", "--channel-id", "eng-alerts"}
 	return nil

@@ -11,7 +11,7 @@ create -> archive -> archive again -> error
 1. Double archive.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Twice", "twice-ch")
 	archiveChannel(t, req, "twice-ch")
 	req.Args = []string{"channel", "archive", "--channel-id", "twice-ch"}

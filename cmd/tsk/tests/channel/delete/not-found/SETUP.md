@@ -11,7 +11,7 @@ tsk channel delete --channel-id nope -> error
 1. Delete missing channel.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = []string{"channel", "delete", "--channel-id", "nope"}
 	return nil
 }

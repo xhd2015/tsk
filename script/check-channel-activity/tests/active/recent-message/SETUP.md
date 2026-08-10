@@ -13,7 +13,7 @@ check-channel-activity -> status: active -> no marker touch
 2. Run one-shot check.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ts := recentActivityTS()
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "ping", CreatedAt: ts,

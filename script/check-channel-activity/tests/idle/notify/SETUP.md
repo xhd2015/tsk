@@ -13,7 +13,7 @@ check-channel-activity -> status: notified -> touch marker -> state.json
 2. Run one-shot check.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "stale", CreatedAt: oldActivityTS,
 	}}

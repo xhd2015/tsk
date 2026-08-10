@@ -15,7 +15,7 @@ tsk channel --channel-id team-ch participant add bob
 2. Run `tsk channel --channel-id team-ch participant add bob` (no leaf `--channel-id`).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	createChannel(t, req, "Team", "team-ch")
 	req.Args = []string{"channel", "--channel-id", "team-ch", "participant", "add", "bob"}
 	return nil

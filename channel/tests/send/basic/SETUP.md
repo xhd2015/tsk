@@ -12,7 +12,7 @@ seed channel -> SendMessage(alice, "hello") -> id 1 in jsonl
 2. Send message as alice.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	seedChannel(t, req, "Send Room", "send-ch")
 	req.Op = "send"
 	req.ChannelID = "send-ch"

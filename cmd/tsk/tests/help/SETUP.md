@@ -13,7 +13,7 @@ tsk [no args | -h | --help | <cmd> --help] -> stdout usage; stderr empty; exit 0
 - Nested dispatch commands (`topic`, `label`, `clarify`) expose subcommand lists in their help text.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	return nil
 }

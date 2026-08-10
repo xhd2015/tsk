@@ -12,7 +12,7 @@ create -> tsk status --color <id> -> no followup on right rail, questions on spi
 2. Run `tsk status --color <id>` (full pipeline diagram).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "fork semantics"
 	id := createTask(t, req, req.Title, "", nil)
 	req.TaskID = id

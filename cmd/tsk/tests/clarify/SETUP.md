@@ -8,7 +8,7 @@ tsk clarify add|list|confirm <id> -> batch.json + stage rename on confirm -y
 ```
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	ensureHelpersUsed()
 	return nil
 }

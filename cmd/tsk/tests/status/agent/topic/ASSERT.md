@@ -33,7 +33,7 @@ import (
 	"fmt"
 )
 
-func Assert(t *testing.T, req *Request, resp *Response, err error) {
+func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
 	assertStatusOK(t, resp)
 	if resp.Stderr != "" {

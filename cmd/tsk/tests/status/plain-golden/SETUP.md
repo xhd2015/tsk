@@ -13,7 +13,7 @@ tsk create -> tsk status --plain <id>
 3. Compare full stdout to `expected.txt` (exact equality; 1:1 map of unicode golden).
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "plain golden"
 	id := createTask(t, req, req.Title, "", nil)
 	req.TaskID = id

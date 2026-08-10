@@ -11,7 +11,7 @@ Creator=alice -> Create("Eng Alerts") -> eng-alerts active dir
 1. Create channel `Eng Alerts` with default slug id.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Op = "create"
 	req.ChannelName = "Eng Alerts"
 	req.ChannelID = ""

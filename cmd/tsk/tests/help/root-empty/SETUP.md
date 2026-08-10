@@ -11,7 +11,7 @@ tsk -> topHelp on stdout; exit 0
 1. Run `tsk` with no arguments.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Args = nil
 	return nil
 }

@@ -12,7 +12,7 @@
 2. Run `--forever --interval 1ms --max-ticks 2`.
 
 ```go
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "stale", CreatedAt: oldActivityTS,
 	}}

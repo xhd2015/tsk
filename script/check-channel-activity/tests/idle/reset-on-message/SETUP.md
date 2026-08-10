@@ -21,7 +21,7 @@ import (
 
 const midActivityTS = "2026-07-13T12:00:00Z"
 
-func Setup(t *testing.T, req *Request) error {
+func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	msgs := []channelMessage{{
 		ID: 1, Sender: "alice", Body: "stale", CreatedAt: oldActivityTS,
 	}}
