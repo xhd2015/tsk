@@ -201,6 +201,7 @@ func assertAgentLeadingFactsShape(t *testing.T, stdout, title, stage, terminal, 
 	if !ok || dirVal == "" {
 		t.Fatalf("dir: missing for leading facts template\n%s", stdout)
 	}
+	// QuoteMeta: task dirs are [id]-…; unescaped [ ] are regex character classes.
 	tmpl := fmt.Sprintf(`---
 version: 2
 __ID__: type=number, example=1
@@ -211,7 +212,7 @@ stage: %s
 terminal: %s
 topic: %s
 dir: %s
-`, title, stage, terminal, topic, dirVal)
+`, title, stage, terminal, topic, regexp.QuoteMeta(dirVal))
 	assert.Output(t, facts, tmpl)
 }
 

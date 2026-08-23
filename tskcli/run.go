@@ -32,11 +32,11 @@ func Run(args []string) error {
 }
 
 type invocationContext struct {
-	home    string
-	args    []string
-	command string
+	home      string
+	args      []string
+	command   string
 	eventArgs []string
-	start   time.Time
+	start     time.Time
 }
 
 func (ctx *invocationContext) finish(exitCode int) {
@@ -81,6 +81,14 @@ func dispatch(home string, args []string) error {
 		return runDone(home, args[1:])
 	case "channel":
 		return runChannel(home, args[1:])
+	case "note":
+		return runNote(home, args[1:])
+	case "tree":
+		return runTree(home, args[1:])
+	case "progress":
+		return runProgress(home, args[1:])
+	case "skill":
+		return runSkill(home, args[1:])
 	default:
 		return fmt.Errorf("tsk: unknown subcommand %q", args[0])
 	}

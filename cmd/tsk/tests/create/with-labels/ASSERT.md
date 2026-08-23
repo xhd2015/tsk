@@ -5,7 +5,7 @@
 
 ## Side Effects
 
-- Task created in inbox at `inbox/1-create-x/`.
+- Task created in inbox at `inbox/[1]-create-x/`.
 
 ## Exit Code
 

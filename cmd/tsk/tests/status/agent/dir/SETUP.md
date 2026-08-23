@@ -3,7 +3,7 @@
 **Feature**: agent format facts block includes absolute task directory as `dir:` after topic
 
 ```
-# create stores task under TSK_HOME/inbox/<id>-create-<slug>; agent status prints dir:
+# create stores task under TSK_HOME/inbox/[id]-create-<slug>; agent status prints dir:
 tsk create "add dark mode" -> tsk status --format=agent <id>
 # facts: id → title → stage → terminal → topic → dir (absolute path; inbox topic)
 ```

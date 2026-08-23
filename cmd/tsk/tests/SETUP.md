@@ -56,6 +56,7 @@ type taskJSON struct {
 	Slug         string           `json:"slug"`
 	Labels       []string         `json:"labels"`
 	TopicPath    json.RawMessage  `json:"topic_path"`
+	ParentID     int              `json:"parent_id"`
 	Stage        string           `json:"stage"`
 	CreatedAt    string           `json:"created_at"`
 	UpdatedAt    string           `json:"updated_at"`
@@ -253,7 +254,7 @@ func slugify(s string) string {
 }
 
 func taskDirName(id int, stage, title string) string {
-	return fmt.Sprintf("%d-%s-%s", id, stage, slugify(title))
+	return fmt.Sprintf("[%d]-%s-%s", id, stage, slugify(title))
 }
 
 func inboxTaskRel(id int, stage, title string) string {
@@ -496,7 +497,7 @@ func assertStderrContainsCount(t *testing.T, stderr, substr string, want int) {
 func topLevelSubcommands() []string {
 	return []string{
 		"create", "list", "show", "status", "advance", "stage", "next",
-		"label", "topic", "clarify", "followup", "done",
+		"label", "topic", "clarify", "followup", "done", "channel", "note", "progress", "tree", "skill",
 	}
 }
 
@@ -626,9 +627,21 @@ func assertLastEventCommand(t *testing.T, req *Request, wantCommand string) {
 
 func globFollowupFiles(t *testing.T, taskDir string) []string {
 	t.Helper()
-	matches, err := filepath.Glob(filepath.Join(taskDir, "context", "followup-*.md"))
+	// ReadDir — filepath.Glob treats [ in [id]-… task dirs as a character class.
+	contextDir := filepath.Join(taskDir, "context")
+	entries, err := os.ReadDir(contextDir)
 	if err != nil {
-		t.Fatalf("glob followup files: %v", err)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		t.Fatalf("read context/: %v", err)
+	}
+	var matches []string
+	for _, ent := range entries {
+		name := ent.Name()
+		if strings.HasPrefix(name, "followup-") && strings.HasSuffix(name, ".md") {
+			matches = append(matches, filepath.Join(contextDir, name))
+		}
 	}
 	return matches
 }

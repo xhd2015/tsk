@@ -9,8 +9,8 @@
 - Exit code 0.
 - Stdout is task id `1` plus trailing `\n` only.
 - Stderr empty.
-- Task directory `inbox/1-create-hello/` exists with `task.json` and `context/`.
-- `index/1` contains `inbox/1-create-hello`.
+- Task directory `inbox/[1]-create-hello/` exists with `task.json` and `context/`.
+- `index/1` contains `inbox/[1]-create-hello`.
 
 ## Side Effects
 

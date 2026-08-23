@@ -3,7 +3,7 @@
 **Feature**: create task with --topic places directory under topics tree
 
 ```
-tsk create --topic eng/backend "x" -> topics/eng/backend/1-create-x/
+tsk create --topic eng/backend "x" -> topics/eng/backend/[1]-create-x/
 ```
 
 ## Steps

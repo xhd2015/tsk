@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Task directory under `inbox/1-create-return-home/`.
+- Task directory under `inbox/[1]-create-return-home/`.
 - `topic_path` is null in `task.json`.
 - `index/1` points at inbox path.
 

@@ -18,7 +18,7 @@ dir: <exact absolute path from stdout>
 - Leading facts order locked: `id` → `title` → `stage` → `terminal` → `topic` → `dir`.
 - Inbox `topic: (not classified yet)` immediately above `dir:`.
 - `dir:` value is an **absolute** filesystem path to the task directory.
-- Path contains or ends with `inbox/<id>-create-add-dark-mode` (stage segment in dir name).
+- Path contains or ends with `inbox/[id]-create-add-dark-mode` (stage segment in dir name).
 - Key is `dir:` only — no `path:` or `path_rel:`.
 - Homes / temp roots vary: `assert.Output` uses exact stdout `dir:` as a literal line; Go checks abs + suffix + on-disk equality.
 
@@ -57,8 +57,8 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	if !filepath.IsAbs(dirVal) {
 		t.Fatalf("dir: must be absolute, got %q", dirVal)
 	}
-	wantSuffix := taskDirName(req.TaskID, "create", req.Title) // e.g. 1-create-add-dark-mode
-	rel := inboxTaskRel(req.TaskID, "create", req.Title)       // inbox/1-create-add-dark-mode
+	wantSuffix := taskDirName(req.TaskID, "create", req.Title) // e.g. [1]-create-add-dark-mode
+	rel := inboxTaskRel(req.TaskID, "create", req.Title)       // inbox/[1]-create-add-dark-mode
 	dirSlash := filepath.ToSlash(dirVal)
 	if !strings.HasSuffix(dirSlash, wantSuffix) && !strings.Contains(dirSlash, rel) {
 		t.Fatalf("dir: %q must contain %q or suffix-match %q", dirVal, rel, wantSuffix)

@@ -3,8 +3,9 @@
 **Feature**: `tsk create` allocates id, writes task directory and index entry
 
 ```
-# title + optional --topic and --label flags
-tsk create [--label L]... [--topic PATH] <title> -> inbox/ or topics/<path>/ task dir
+# title + optional --topic / --parent / --label / --note flags
+tsk create [--label L]... [--topic PATH | --parent ID] [--note T]... <title>
+  -> inbox/, topics/<path>/, or nested under parent; optional notes.jsonl entries
 ```
 
 ## Preconditions

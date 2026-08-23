@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Task directory moved from inbox to `topics/eng/backend/1-create-move-me/`.
+- Task directory moved from inbox to `topics/eng/backend/[1]-create-move-me/`.
 - `index/1` updated to topic-relative path.
 - `task.json` `topic_path` matches `["eng","backend"]`.
 

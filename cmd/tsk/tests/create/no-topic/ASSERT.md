@@ -1,8 +1,8 @@
 ## Expected
 
 - Exit code 0.
-- Task directory `inbox/1-create-add-dark-mode/` exists with `task.json` and `context/`.
-- `index/1` contains `inbox/1-create-add-dark-mode`.
+- Task directory `inbox/[1]-create-add-dark-mode/` exists with `task.json` and `context/`.
+- `index/1` contains `inbox/[1]-create-add-dark-mode`.
 - `task.json` has `id: 1`, `title: "add dark mode"`, `slug: "add-dark-mode"`, `stage: "create"`, `topic_path: null`.
 - `context/` exists and is empty.
 

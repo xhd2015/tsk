@@ -18,21 +18,29 @@ Commands:
   topic      set topic path or mkdir topic tree
   clarify    manage clarification questions
   followup   add followup context from summary
-  done       mark task done from summary or user_followup
+  done       mark task done (use --force to bypass the workflow stage requirement)
   channel    manage conversational channels
+  note       add or list timestamped notes on a task
+  progress   record and list progress entries on a task
+  tree       print all tasks organized by topic tree
+  skill      show/install embedded skill docs
 
 Run tsk <command> --help for command-specific options.
+Run tsk skill --help and tsk skill --install --help for skill docs.
 `
 }
 
 func createHelp() string {
-	return `Usage: tsk create [--label LABEL]... [--topic PATH] <title>
+	return `Usage: tsk create [--label LABEL]... [--topic PATH | --parent ID] [--note TEXT]... <title>
 
-Create a new task in inbox or under a topic path.
+Create a new task in inbox, under a topic path, or as a nested sub-task.
+Optional --note flags append task notes after create (same store as note add).
 
 Flags:
   --label LABEL   label to attach (repeatable)
   --topic PATH    topic path (e.g. eng/backend)
+  --parent ID     create as nested sub-task under this task (any depth)
+  --note TEXT     append a task note after create (repeatable)
   -h, --help      show this help
 `
 }
@@ -118,8 +126,256 @@ func topicHelp() string {
 Subcommands:
   set <id> <path|--inbox>   move task to topic path or inbox
   mkdir <path>              create topic directory tree
+  where <topic>             print absolute topic directory
+  info <topic>              show topic metadata and counts
+  note <topic> <text...>    append a timestamped topic note
+  notes <topic>             list topic notes
+  view <topic>              print topic / sub-topic / task tree
+  alias add <topic> <alias> add an alias (creates topic.json)
 
   -h, --help                show this help
+`
+}
+
+func topicWhereHelp() string {
+	return `Usage: tsk topic where <topic>
+
+Print the absolute directory of a topic.
+
+  <topic>     topic path or alias
+  -h, --help  show this help
+`
+}
+
+func topicInfoHelp() string {
+	return `Usage: tsk topic info [options] <topic>
+
+Show topic details: path, title, aliases, dir, note count, task count, subtopics.
+
+  <topic>     topic path or alias
+  --json      machine-readable object (no ANSI)
+  -h, --help  show this help
+`
+}
+
+func topicNoteHelp() string {
+	return `Usage: tsk topic note [options] <topic> <text...>
+
+Append a timestamped note to the topic journal (notes.jsonl).
+Does not replace earlier notes.
+
+Flags:
+  --label LABEL   label for this note (repeatable)
+  -h, --help      show this help
+`
+}
+
+func topicNotesHelp() string {
+	return `Usage: tsk topic notes [options] <topic>
+
+List timestamped topic notes (oldest first).
+
+  <topic>     topic path or alias
+  --label LABEL   only notes that have this label (repeatable, AND)
+  --json          JSON array (no ANSI)
+  --limit N       last N notes only
+  -h, --help      show this help
+`
+}
+
+func noteHelp() string {
+	return `Usage: tsk note <command> [arguments]
+
+Subcommands:
+  add [--label LABEL]... --id ID <text...>   append a timestamped note to a task
+  list [--label LABEL]... --id ID            list notes (oldest first)
+  edit [options] --id ID --index N <text...> edit an existing note in place
+
+  -h, --help                                 show this help
+`
+}
+
+func noteAddHelp() string {
+	return `Usage: tsk note add [options] <text...>
+
+Append a timestamped note to a task.
+
+Flags:
+  --id ID         task id (required)
+  --label LABEL   label for this note (repeatable)
+  -h, --help      show this help
+`
+}
+
+func noteListHelp() string {
+	return `Usage: tsk note list [options]
+
+List notes for a task (oldest first).
+
+Flags:
+  --id ID          task id (required)
+  --label LABEL   only notes that have this label (repeatable, AND)
+  --show-index     prefix each note with 1-based index
+  --json          JSON array (no ANSI)
+  --limit N       last N notes only
+  -h, --help      show this help
+`
+}
+
+func noteEditHelp() string {
+	return `Usage: tsk note edit [options] --id ID --index N <text...>
+
+Edit the text of an existing note in place. Labels and status are
+preserved unless --status is given.
+
+The note is identified by --index N (1-based) within the filtered
+set. Use --label to narrow the candidate notes (AND filter), same
+as ` + "`note list`" + `. Use ` + "`note list --show-index`" + ` to see indices.
+
+Flags:
+  --id ID          task id (required)
+  --index N        1-based index into filtered notes (required)
+  --label LABEL    filter by label (repeatable, AND)
+  --status STATUS  replace status (optional; preserved if omitted)
+  --append         append text to existing note text instead of replacing
+  -h, --help       show this help
+`
+}
+
+func treeHelp() string {
+	return `Usage: tsk tree [options]
+
+Print all tasks organized by topic tree, like the tree CLI.
+Inbox tasks (no topic) appear at the root level alongside top-level topics.
+
+With --id, print a pruned branch from root to one task, including its
+notes and progress entries nested under the task leaf. Done task leaves and
+progress entries with status done or archived are gray and struck through on a terminal.
+
+Flags:
+  --id ID     show only the branch for one task (with notes + progress)
+  --color     force ANSI color and strikethrough
+  --plain     force no ANSI color or strikethrough
+  --json      emit structured JSON instead of the tree
+  -h, --help  show this help
+`
+}
+
+func progressHelp() string {
+	return `Usage: tsk progress <command> [arguments]
+
+Subcommands:
+  add --status STATUS --id ID <text...>       append a progress entry
+  list [--status STATUS] [--show-index] --id ID
+                                                list progress entries
+  edit --status STATUS --id ID --index N [text...]
+                                                update one progress entry
+  archive --id ID --index N                    mark one entry archived
+  show --id ID                                 show latest progress entry
+
+Statuses: in-progress, blocked, done, archived
+
+  -h, --help                                    show this help
+`
+}
+
+func progressAddHelp() string {
+	return `Usage: tsk progress add --status STATUS --id ID <text...>
+
+Append a timestamped progress entry to a task journal.
+
+Statuses: in-progress, blocked, done, archived
+
+Flags:
+  --id ID         task id (required)
+  --status STATUS  progress status (required)
+  -h, --help       show this help
+`
+}
+
+func progressListHelp() string {
+	return `Usage: tsk progress list [options] --id ID
+
+List progress entries for a task (oldest first).
+
+Flags:
+  --id ID          task id (required)
+  --status STATUS  only entries with this status
+  --show-index     prefix each entry with 1-based index
+  --json           JSON array (no ANSI)
+  --limit N        last N entries only
+  -h, --help       show this help
+`
+}
+
+func progressEditHelp() string {
+	return `Usage: tsk progress edit --status STATUS --id ID --index N [text...]
+
+Update one progress entry. The index is 1-based among progress entries;
+use ` + "`tsk progress list --show-index`" + ` to see indices. When text is
+provided, it replaces the existing entry text.
+
+Statuses: in-progress, blocked, done, archived
+
+Flags:
+  --id ID          task id (required)
+  --index N        1-based progress entry index (required)
+  --status STATUS  replacement status (required)
+  -h, --help       show this help
+`
+}
+
+func progressArchiveHelp() string {
+	return `Usage: tsk progress archive --id ID --index N
+
+Mark one progress entry archived. Equivalent to:
+  tsk progress edit --id ID --index N --status archived
+
+Flags:
+  --id ID      task id (required)
+  --index N    1-based progress entry index (required)
+  -h, --help   show this help
+`
+}
+
+func progressShowHelp() string {
+	return `Usage: tsk progress show [options] --id ID
+
+Print the latest progress entry for a task.
+
+Flags:
+  --id ID      task id (required)
+  -h, --help   show this help
+`
+}
+
+func topicViewHelp() string {
+	return `Usage: tsk topic view [options] <topic>
+
+Print the topic tree: sub-topics and tasks. Skips topic.json and notes.jsonl.
+
+  <topic>     topic path or alias
+  --json      nested object (no ANSI)
+  -h, --help  show this help
+`
+}
+
+func topicAliasHelp() string {
+	return `Usage: tsk topic alias <command> [arguments]
+
+Subcommands:
+  add <topic> <alias>   bind an alias to an existing topic
+
+  -h, --help            show this help
+`
+}
+
+func topicAliasAddHelp() string {
+	return `Usage: tsk topic alias add <topic> <alias>
+
+Add an alias that resolves to the topic's canonical path.
+
+  -h, --help  show this help
 `
 }
 
@@ -156,10 +412,13 @@ Add followup context from summary stage.
 }
 
 func doneHelp() string {
-	return `Usage: tsk done <id>
+	return `Usage: tsk done [--force] <id>
 
 Mark task done from summary or user_followup stage.
+Use --force to complete it from any non-terminal stage.
 
+Flags:
+  --force         bypass the normal workflow stage requirement
   -h, --help      show this help
 `
 }

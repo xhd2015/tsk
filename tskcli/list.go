@@ -35,6 +35,16 @@ func runList(home string, args []string) error {
 	if err != nil {
 		return err
 	}
+	wantTopic := strings.Trim(topicPrefix, "/")
+	if topicPrefix != "" {
+		resolved, err := resolveTopicInput(home, topicPrefix)
+		if err != nil {
+			return fail(err)
+		}
+		if len(resolved) > 0 {
+			wantTopic = storage.JoinTopicPath(resolved)
+		}
+	}
 	for _, id := range ids {
 		task, _, err := storage.LoadTaskByID(home, id)
 		if err != nil {
@@ -46,13 +56,13 @@ func runList(home string, args []string) error {
 		if label != "" && !containsLabel(task.Labels, label) {
 			continue
 		}
-		if topicPrefix != "" {
+		if wantTopic != "" {
 			parts, err := storage.ParseTopicPath(task.TopicPath)
 			if err != nil {
 				return err
 			}
 			topicStr := strings.Join(parts, "/")
-			if !strings.HasPrefix(topicStr, strings.Trim(topicPrefix, "/")) {
+			if !strings.HasPrefix(topicStr, wantTopic) {
 				continue
 			}
 		}

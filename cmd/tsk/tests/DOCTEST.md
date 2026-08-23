@@ -7,7 +7,9 @@ Decision tree covering the `tsk` CLI: task creation (inbox and topic placement),
 listing and filtering, show/status display, stage transitions (advance, stage,
 clarify, followup, done), topic management, label management, `next` selection,
 Slack-like **channel** spaces (create/list/archive/delete, send, messages,
-participants), and append-only `events.jsonl` auditing.
+participants), append-only `events.jsonl` auditing, task **progress**
+entries with optional status, and a global **tree** view of all tasks organized
+by topic.
 
 # DSN (Domain Specific Notion)
 
@@ -18,13 +20,28 @@ participants), and append-only `events.jsonl` auditing.
 - **counter** — plain-text monotonic integer at `{TSK_HOME}/counter`; flock on read-modify-write for ID allocation.
 - **index/<id>** — UTF-8 single line: relative path from `TSK_HOME` to task directory; updated on create, stage rename, topic move; atomic write via temp + rename.
 - **events.jsonl** — append-only audit log; one JSON object per CLI invocation (success or failure).
-- **Task directory** — name `<id>-<stage>-<slug>/` under `inbox/` (no topic) or `topics/<path>/` (topic tree); contains `task.json`, `context/` (empty on create), and `clarify/` (during clarification with `batch.json`).
-- **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), `stage`, `created_at`, `updated_at`, `stage_history`.
+- **Task directory** — name `[id]-<stage>-<slug>/` under `inbox/` (no topic), `topics/<path>/` (topic tree), or nested under a parent task dir; contains `task.json`, `context/` (empty on create), and `clarify/` (during clarification with `batch.json`).
+- **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), optional `parent_id` (nested sub-tasks), `stage`, `created_at`, `updated_at`, `stage_history`.
+- **create --parent** — `tsk create --parent <id> <title>` nests under the parent task directory (any depth); child inherits parent `topic_path`; mutually exclusive with `--topic`.
 - **Slug** — lowercase, non-letter-digit → `-`, collapse, trim, max 64 runes; immutable after create.
 - **Stage workflow** — `create → in_process → clarification → implementation → verification → summary → user_followup (loop to clarification) OR done`; `done` is terminal.
 - **Transitions** — `advance` follows allowed edges; `stage` sets stage directly (invalid jumps error); `clarify confirm -y` confirms all items and auto-advances to `implementation`; `followup` writes `context/followup-<ts>.md` and sets `user_followup`; `done` only from `summary` or `user_followup`.
-- **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`.
-- **topic mkdir** — creates topic directory tree under `topics/`.
+- **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`. Alias refs resolve to the canonical path before the move.
+- **topic mkdir** — creates topic directory tree under `topics/`. Errors if the path is an alias for another topic.
+- **topic.json** — optional metadata in `topics/<path>/topic.json`: `path`, `title`, `aliases`, `notes`, `updated_at`. Created by `topic note` / `topic alias add`. Reserved filename; not a task dir.
+- **topic where** — stdout is the absolute topic directory + `\n`; `Error: topic not found: <ref>` (exit 1) when the dir does not exist. Accepts path or alias.
+- **topic info** — facts `path`, `title`, `aliases`, `dir`, `notes`, `tasks` (exact `topic_path` match, not descendants), `subtopics` (child dirs that are not `[id]-<stage>-<slug>`). Missing `topic.json` uses defaults (title = last path segment). `--json` encodes one object, no ANSI.
+- **topic alias** — `alias add <topic> <alias>` appends to `topic.json`; conflict if another topic already claims the alias or a different topic dir exists at that path.
+- **topic note** — `note [--label LABEL]... <topic> <text...>` **appends** one `{ts,text,labels?}` line to `topics/<path>/notes.jsonl` (does not replace). Migrates a legacy `topic.json` `"notes"` blob into the jsonl once, then clears the blob. Unlabeled lines omit `labels`.
+- **topic notes** — `notes [--json] [--limit N] [--label LABEL]... <topic>` lists the journal (oldest first; `--limit` is last N; `--label` AND-filters). Missing jsonl → `0 notes` / `[]`. `info` `notes:` is the **count**. Human lines are `ts  text` or `ts  [a, b]  text` when labeled.
+- **task notes** — `note add [--label LABEL]... --id ID <text...>` appends the same `{ts,text,labels?,status?}` jsonl into the **task directory**. `--id` required. Success stdout `added note`. `note list [--json] [--limit N] [--label LABEL]... [--show-index] --id ID` lists (oldest first; AND filter; `--show-index` prefixes `N.  ` 1-based). Missing jsonl → `0 notes` / `[]`. Duplicate notes allowed (journal). `note edit [--label LABEL]... --id ID --index N [--status STATUS] [--append] <text...>` edits a note in place: `--index N` (1-based, required) selects within the `--label`-filtered set; text replaces by default, `--append` concatenates; labels and `ts` preserved, `--status` replaces status if given. Success stdout `edited note`. `RewriteNotes` atomically rewrites `notes.jsonl` (temp + rename). `show` prints `notes: N` (count). Grok session tracking is convention: `--label grok --label session-id` with the session id as text.
+- **progress** — `progress add --status STATUS --id ID <text...>` appends a `{ts,text,labels:["progress"],status}` line to the same task `notes.jsonl`; status is required and one of `in-progress`, `blocked`, `done`, `archived`. Legacy `started` entries remain readable. `progress list [--json] [--limit N] [--status STATUS] [--show-index] --id ID` lists progress-labeled entries (oldest first; `--status` filters; `--show-index` prefixes 1-based indices). `progress edit --status STATUS --id ID --index N [text...]` updates one 1-based progress entry (and replaces text only when supplied). `progress archive --id ID --index N` sets that entry to `archived`. `progress show --id ID` prints the latest entry or `no progress`. Human format: `ts  [progress]  (status)  text`. `done`/`archived` entries are gray + struck through when output is an interactive terminal (or `tree --color`); JSON and `tree --plain` contain no ANSI. `show` prints `progress: <status> (N entries)` when the latest has a status, else `progress: N entries`; omitted when no progress entries.
+- **done** — `done <id>` marks a task done only from `summary` or `user_followup`; `done --force <id>` completes it directly from any non-terminal stage. Both update `task.json`, the task directory stage segment, the index, and stage history.
+- **topic view** — `view [--json] <topic>` prints the topic tree (sub-topics + task nodes `[id]-<stage>-<slug>  task <id>  <stage>`, with nested sub-tasks indented). Skips `topic.json` / `notes.jsonl`. Empty topic: header + `(empty)`. Unicode `├──`/`└──`. `--json` nested `{path,aliases,tasks,subtopics}`; task nodes may include nested `tasks`; child `path` is the directory name.
+- **create --note** — `create … [--note TEXT]… <title>` appends each note to the new task’s `notes.jsonl` after create (same format as `note add`); stdout remains the id only; empty `--note` errors.
+- **skill** — `skill --show|--install|--list` embeds Shape-3 docs (`docs/SKILL.md` + `docs/<topic>/TOPIC.md`) via `skillcmd.SingleSkill`. Actions are flags (both orders). `--list` prints `tsk` then sorted topic paths. `--help` appends Available topics. Install via `skillcmd.HandleInstall` (flags in `--install --help` only — not in SKILL.md). Root help lists `skill`.
+- **tree** — `tree [--json] [--id ID] [--color|--plain]` prints all tasks organized by topic tree (like `tree` CLI). Root `.` then inbox tasks (topic_path null) as direct leaves alongside top-level topics; each topic shows `aliases: a, b` when set. Nested sub-topics recurse via `LoadTopicTree`. Footer `N tasks, M topics` (singular/plural). Empty store: `.` + `(empty)` + `0 tasks, 0 topics`. `--json` emits `{"inbox":[...],"topics":[{path,aliases,tasks,subtopics}]}`; no ANSI. With `--id ID`, prints a pruned branch from root to one task only; under the task leaf, non-progress notes appear under a `notes` node and progress entries under a `progress` node (both omitted when empty). `--id --json` emits `{"task":{id,stage,slug,dir,topic_path},"notes":[...],"progress":[...]}` (empty arrays, not null). Terminal `done`/`archived` progress content and task leaves whose stage is `done` are gray + struck through; branch art remains unstyled. `--color` forces those ANSI sequences; `--plain` and `--json` suppress them. Footer `1 task, N topics`.
+- **topic alias on create/list** — `create --topic` and `list --topic` resolve aliases to the canonical slash path so `知识库` does not fork `topic_path`.
 - **next** — stdout prints id of oldest `in_process` task by `created_at`, or empty stdout when none.
 - **status** — pipeline view of a task; flags `--format=diagram|agent`, `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **Default format** when `--format` is absent and neither `--color` nor `--plain` is present: if `TSK_STATUS_FORMAT=agent|diagram` is set use that; else if an agent host is detected (`CODEX_THREAD_ID`, `PI_CODING_AGENT`, or parent/grandparent process name via lean `agentrunner.Detect`) use `agent`; else `diagram`. Precedence (highest first): `--format` present → that value; `--color` or `--plain` present → diagram; `TSK_STATUS_FORMAT`; detect → agent; else diagram. **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~40 col, 3-line boxes with labels inside mid-rows; tee borders `├`/`┤` OK on summary/user_followup); geometry: ●/create center-aligned on spine; **refine** left-rail from left mid of `user_followup` to left mid of `clarification` (no rail under done/◉); **no followup** right-rail from right mid of `summary` to right mid of `done`; **satisfied** vertical spine label under `user_followup` (no `satisfied►`); **done→◉** dead end; semantic ANSI overlay when colored (current=green bold, visited=grey, edge-into-current=orange). Exact art sealed by `status/diagram-golden` + `status/plain-golden` `expected.txt`. **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `title`, `stage`, `terminal`, `topic`, `dir` in that order, then after art `advance`/`next`); `title` is exact `task.json` create title (same key as `tsk show`); `topic` is always present above `dir:` — slash-joined `topic_path` segments (e.g. `eng/backend`) when set, or exactly `(not classified yet)` for inbox/null `topic_path` (differs from `tsk show`, which prints `topic: inbox`); `dir` is the absolute task directory path (from index + `TSK_HOME`; key `dir:` only — no `path`/`path_rel`); no ANSI even with `--color`; no rectangle chrome; no width cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
 - **Request.Args** — CLI arguments passed to `tsk` (subcommand + flags + positionals).
@@ -57,7 +74,38 @@ tsk tests
 │   └── confirm/                  # add questions, confirm -y → implementation
 ├── topic/                        # tsk topic *
 │   ├── set-to-topic/             # inbox → topic path, dir move
-│   └── set-to-inbox/             # topic → inbox, topic_path null
+│   ├── set-to-inbox/             # topic → inbox, topic_path null
+│   ├── where/                    # topic where
+│   │   ├── basic/                # mkdir → abs dir
+│   │   ├── alias/                # 知识库 → knowledge-base dir
+│   │   └── missing/              # not found error
+│   ├── info/                     # topic info
+│   │   ├── empty/                # mkdir-only defaults, no topic.json
+│   │   ├── with-task/            # exact-path task count
+│   │   ├── subtopic/             # child topic names
+│   │   └── json/                 # --json object
+│   ├── alias/                    # topic alias add
+│   │   ├── add/                  # writes topic.json
+│   │   └── conflict/             # second owner errors
+│   ├── note/set/                 # topic note → info count
+│   ├── note/append/              # second note keeps the first
+│   ├── note/labeled/             # topic note --label
+│   ├── notes/                    # topic notes list
+│   │   ├── empty/
+│   │   ├── json/
+│   │   ├── limit/
+│   │   └── migrate/              # legacy topic.json blob
+│   ├── help/notes/               # topic notes --help
+│   ├── create-via-alias/         # create --topic alias uses canonical path
+│   ├── list-alias/               # list --topic alias
+│   ├── help/where/               # topic where --help
+│   ├── view/                     # topic view tree
+│   │   ├── empty/
+│   │   ├── tree/
+│   │   ├── json/
+│   │   ├── missing/
+│   │   └── alias/
+│   └── help/view/
 ├── next/                         # tsk next
 │   └── oldest/                   # two in_process → older id on stdout
 ├── done/                         # tsk done
@@ -103,6 +151,68 @@ tsk tests
 │       └── force-color-blocks-auto/    # CODEX + --color → diagram, not agent facts
 ├── show/                         # tsk show
 │   └── basic/                    # metadata block for id
+├── note/                         # tsk note add / list (task journal)
+│   ├── add/
+│   │   ├── basic/                # unlabeled add + list
+│   │   ├── labeled/              # --label grok --label session-id
+│   │   ├── missing-id/
+│   │   ├── missing-text/
+│   │   └── missing-task/
+│   ├── list/
+│   │   ├── empty/
+│   │   ├── json/
+│   │   ├── filter-label/
+│   │   ├── limit/
+│   │   └── show-index/          # 1-based index prefix
+│   ├── edit/
+│   │   ├── basic/                # replace text in place
+│   │   ├── append/               # --append adds to existing text
+│   │   ├── labeled/              # --label filter + --index select
+│   │   ├── status/               # --status on progress entry
+│   │   ├── missing-index/
+│   │   ├── index-out-of-range/
+│   │   └── help/
+│   ├── help/
+│   │   ├── top/
+│   │   ├── add/
+│   │   └── list/
+│   └── show-count/               # show notes: N
+├── progress/                    # tsk progress lifecycle
+│   ├── add/
+│   │   ├── basic/                # --status in-progress required
+│   │   ├── status/               # add --status then list
+│   │   ├── missing-id/
+│   │   ├── missing-status/
+│   │   ├── invalid-status/
+│   │   └── missing-text/
+│   ├── list/
+│   │   ├── empty/                # 0 entries
+│   │   ├── basic/                # multiple entries with status
+│   │   ├── status-filter/        # --status filters
+│   │   ├── show-index/           # 1-based entry prefix
+│   │   └── json/                 # JSON array
+│   ├── edit/
+│   │   └── basic/                # indexed status/text update
+│   ├── archive/
+│   │   └── basic/                # indexed archive shortcut
+│   ├── show/
+│   │   ├── latest/               # latest entry
+│   │   └── empty/                # no progress
+│   ├── help/
+│   │   └── top/                  # progress -h
+│   └── show-integration/         # show prints progress: line
+├── tree/                        # tsk tree (all tasks by topic)
+│   ├── empty/                   # fresh store → root + (empty)
+│   ├── inbox/                   # inbox-only tasks at root
+│   ├── full/                    # inbox + topic + nested subtopic
+│   ├── json/                    # --json structured output
+│   ├── id/                      # --id: pruned branch + notes + progress
+│   │   ├── full/                # topic task with notes + progress
+│   │   ├── inbox/               # inbox task, no notes
+│   │   ├── json/                # --id --json
+│   │   ├── color/               # done/archived ANSI strikethrough
+│   │   └── missing/             # task not found
+│   └── help/                    # tree -h
 ├── list/                         # tsk list
 │   └── filter/                   # --stage create filters ids
 ├── events/                       # events.jsonl audit
@@ -189,7 +299,7 @@ tsk tests
 
 | # | Leaf | Description |
 |---|------|-------------|
-| 1 | create/no-topic | `tsk create "add dark mode"` → `inbox/1-create-add-dark-mode/`, index, task.json |
+| 1 | create/no-topic | `tsk create "add dark mode"` → `inbox/[1]-create-add-dark-mode/`, index, task.json |
 | 2 | create/with-topic | `tsk create --topic eng/backend "x"` → dir under `topics/eng/backend/` |
 | 3 | create/with-labels | `tsk create --label bug --label urgent "x"` → sorted labels in task.json |
 | 4 | advance/basic | create + `tsk advance` → dir renamed to `…-in_process-…`, index updated |
@@ -197,6 +307,80 @@ tsk tests
 | 6 | clarify/confirm | add 2 questions, `clarify confirm -y` → implementation, batch confirmed |
 | 7 | topic/set-to-topic | inbox task → `topic set <path>` → dir moved, index updated |
 | 8 | topic/set-to-inbox | topic task → `topic set --inbox` → inbox, `topic_path` null |
+| 58 | topic/where/basic | mkdir `knowledge-base` → `where` prints abs `…/topics/knowledge-base` |
+| 59 | topic/where/alias | alias `知识库` → `where 知识库` same dir as knowledge-base |
+| 60 | topic/where/missing | `where no-such` → exit 1, `Error: topic not found: no-such` |
+| 61 | topic/info/empty | mkdir-only → defaults, `tasks: 0`, no `topic.json` |
+| 62 | topic/info/with-task | create under topic → `tasks: 1` |
+| 63 | topic/info/subtopic | mkdir child `reports` → `subtopics: 1` |
+| 64 | topic/info/json | `--json` object, no ANSI |
+| 65 | topic/alias/add | writes `topic.json` aliases |
+| 66 | topic/alias/conflict | second topic cannot claim the same alias |
+| 67 | topic/note/set | `note` then `info` shows `notes: 1` + jsonl |
+| 71 | topic/note/append | two notes listed, footer `2 notes` |
+| 83 | topic/note/labeled | `topic note --label grok` lists `[grok]` |
+| 72 | topic/notes/empty | no jsonl → `0 notes` |
+| 73 | topic/notes/json | `--json` array with `ts`/`text` |
+| 74 | topic/notes/limit | `--limit 1` last line only |
+| 75 | topic/notes/migrate | legacy `topic.json` notes blob → jsonl |
+| 76 | topic/help/notes | `topic notes --help` |
+| 68 | topic/create-via-alias | `create --topic 知识库` stores `["knowledge-base"]` |
+| 69 | topic/list-alias | `list --topic 知识库` prints the task id |
+| 70 | topic/help/where | `topic where --help` |
+| 77 | topic/view/empty | mkdir-only → `(empty)` |
+| 78 | topic/view/tree | task + nested sub-topic task, unicode branches |
+| 79 | topic/view/json | `--json` nested object |
+| 80 | topic/view/missing | not found |
+| 81 | topic/view/alias | `view 知识库` canonical header |
+| 82 | topic/help/view | `topic view --help` |
+| 84 | note/add/basic | unlabeled `note add` then `note list` |
+| 85 | note/add/labeled | `--label grok --label session-id` |
+| 86 | note/add/missing-id | `--id` required |
+| 87 | note/add/missing-text | text required |
+| 88 | note/add/missing-task | `Error: task not found: 99` |
+| 89 | note/list/empty | `0 notes` |
+| 90 | note/list/json | JSON array with labels |
+| 91 | note/list/filter-label | AND filter |
+| 92 | note/list/limit | last N |
+| 93 | note/help/top | `note -h` add+list |
+| 94 | note/help/add | `--id` `--label` |
+| 95 | note/help/list | `--json` `--limit` |
+| 96 | note/show-count | `show` `notes: 2` |
+| 118 | note/edit/basic | replace text in place, `ts` preserved |
+| 119 | note/edit/append | `--append` concatenates to existing text |
+| 120 | note/edit/labeled | `--label` filter + `--index` select among filtered |
+| 121 | note/edit/status | `--status done` on a progress entry |
+| 122 | note/edit/missing-index | `--index` required |
+| 123 | note/edit/index-out-of-range | `Error: index 5 out of range` |
+| 124 | note/edit/help | `note edit -h` shows `--index` `--label` `--status` `--append` |
+| 125 | note/list/show-index | `1.  ` and `2.  ` prefix |
+| 97 | tree/empty | fresh store → `.` + `(empty)` + `0 tasks, 0 topics` |
+| 98 | tree/inbox | inbox-only task at root, footer `1 task, 0 topics` |
+| 99 | tree/full | inbox + topic with aliases + nested subtopic, footer `4 tasks, 1 topic` |
+| 100 | tree/json | `--json` `{inbox:[...],topics:[...]}` no ANSI |
+| 101 | tree/help | `tree -h` usage with `--json` and root level |
+| 114 | tree/id/full | pruned branch with notes + progress under task |
+| 115 | tree/id/inbox | inbox task, no notes/progress sections |
+| 116 | tree/id/json | `--id --json` `{task,notes,progress}` |
+| 117 | tree/id/missing | `Error: task not found: 99` |
+| 126 | tree/id/color | `--color` styles done/archived leaf content only |
+| 102 | progress/add/basic | required `--status in-progress` → `added progress` |
+| 103 | progress/add/status | add `--status in-progress` then list shows `(in-progress)` |
+| 104 | progress/add/missing-id | `--id` required |
+| 105 | progress/add/missing-text | text required after valid status |
+| 127 | progress/add/missing-status | `--status` required |
+| 128 | progress/add/invalid-status | legacy `started` rejected for new entries |
+| 106 | progress/list/empty | no entries → `0 entries` |
+| 107 | progress/list/basic | three entries with status display, footer `3 entries` |
+| 108 | progress/list/status-filter | `--status blocked` filters to one entry |
+| 109 | progress/list/json | JSON array with `status` field |
+| 129 | progress/list/show-index | 1-based progress entry prefixes |
+| 130 | progress/edit/basic | indexed update replaces status and optional text |
+| 131 | progress/archive/basic | indexed archive shortcut sets `archived` |
+| 110 | progress/show/latest | latest entry printed, no footer |
+| 111 | progress/show/empty | no progress → `no progress` |
+| 112 | progress/help/top | `progress -h` lists add/list/edit/archive/show |
+| 113 | progress/show-integration | `show` prints `progress: in-progress (1 entry)` |
 | 9 | next/oldest | two `in_process` tasks → stdout = older id |
 | 10 | done/from-summary | at summary → `tsk done` → stage done, dir renamed |
 | 11 | followup/basic | at summary → `tsk followup` → `user_followup` + `context/followup-*.md` |
@@ -215,7 +399,7 @@ tsk tests
 | 33 | status/fork-semantics | full diagram → no followup vs questions; vertical satisfied (no satisfied►); left refine; done dead end |
 | 34 | status/agent/spine | `--format=agent` at create → spine order, `create[doing]`, core facts (id/title/stage/terminal/topic/dir; inbox topic `(not classified yet)`), no rect chrome, no ANSI |
 | 44 | status/agent/title | create `"add dark mode"` → agent facts `title: add dark mode` after `id:` before `stage:`; order locked through `topic` → `dir` |
-| 45 | status/agent/dir | create `"add dark mode"` → agent facts `dir: <abs path>` after `topic:`; absolute; contains `inbox/<id>-create-add-dark-mode`; no `path`/`path_rel` |
+| 45 | status/agent/dir | create `"add dark mode"` → agent facts `dir: <abs path>` after `topic:`; absolute; contains `inbox/[id]-create-add-dark-mode`; no `path`/`path_rel` |
 | 46 | status/agent/topic | `create --topic eng/backend "…"` → agent facts `topic: eng/backend` after `terminal:` before `dir:`; `dir` contains `topics/eng/backend/` |
 | 35 | status/agent/two-rows | agent art has `user_followup`/`refine`/`questions`; no `satisfied` on art |
 | 36 | status/agent/marks-mid | at implementation → `implementation[doing]`; past bare; future `(…)` |
@@ -332,6 +516,12 @@ doctest test ./tests/advance/basic
 doctest test ./tests/advance/invalid/stage-jump
 doctest test ./tests/clarify/confirm
 doctest test ./tests/topic/set-to-topic
+doctest test ./tests/topic/where
+doctest test ./tests/topic/info
+doctest test ./tests/topic/alias
+doctest test ./tests/topic/note
+doctest test ./tests/topic/create-via-alias
+doctest test ./tests/topic/list-alias
 doctest test ./tests/next/oldest
 doctest test ./tests/done/from-summary
 doctest test ./tests/followup/basic

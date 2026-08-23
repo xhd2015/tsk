@@ -17,5 +17,6 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertContains(t, resp.Stdout, "create")
 	assertContains(t, resp.Stdout, "--label")
 	assertContains(t, resp.Stdout, "--topic")
+	assertContains(t, resp.Stdout, "--note")
 }
 ```

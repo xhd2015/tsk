@@ -1,9 +1,9 @@
 ## Expected
 
 - Exit code 0.
-- Old dir `inbox/1-create-add-dark-mode/` no longer exists.
-- New dir `inbox/1-in_process-add-dark-mode/` exists.
-- `index/1` updated to `inbox/1-in_process-add-dark-mode`.
+- Old dir `inbox/[1]-create-add-dark-mode/` no longer exists.
+- New dir `inbox/[1]-in_process-add-dark-mode/` exists.
+- `index/1` updated to `inbox/[1]-in_process-add-dark-mode`.
 - `task.json` stage is `in_process` with `stage_history` entry `create` → `in_process`.
 
 ## Side Effects

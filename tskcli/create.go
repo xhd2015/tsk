@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
@@ -15,10 +16,14 @@ func runCreate(home string, args []string) error {
 	setCommand(currentCtx, "create", args)
 
 	var labels []string
+	var notes []string
 	var topic string
+	var parentStr string
 	remaining, err := lessflags.
 		StringSlice("--label", &labels).
+		StringSlice("--note", &notes).
 		String("--topic", &topic).
+		String("--parent", &parentStr).
 		Help("-h,--help", createHelp()).
 		HelpNoExit().
 		Parse(args)
@@ -34,6 +39,15 @@ func runCreate(home string, args []string) error {
 	title := remaining[0]
 	if title == "" {
 		return fail(fmt.Errorf("tsk create: title required"))
+	}
+	if topic != "" && parentStr != "" {
+		return fail(fmt.Errorf("tsk create: --topic conflicts with --parent (child inherits parent location)"))
+	}
+	for i, text := range notes {
+		notes[i] = strings.TrimSpace(text)
+		if notes[i] == "" {
+			return fail(fmt.Errorf("tsk create: --note text required"))
+		}
 	}
 
 	if err := storage.EnsureLayout(home); err != nil {
@@ -60,9 +74,31 @@ func runCreate(home string, args []string) error {
 
 	var topicParts []string
 	var relPath string
-	if topic != "" {
-		topicParts = splitTopic(topic)
-		relPath = storage.TopicRelPath(topic, id, stage, title)
+	var parentID int
+	if parentStr != "" {
+		parentID, err = parseID(parentStr)
+		if err != nil {
+			return fail(fmt.Errorf("tsk create: parent task not found: %s", parentStr))
+		}
+		parent, parentDir, loadErr := storage.LoadTaskByID(home, parentID)
+		if loadErr != nil {
+			return fail(fmt.Errorf("tsk create: parent task not found: %d", parentID))
+		}
+		parentRel, err := storage.RelFromHome(home, parentDir)
+		if err != nil {
+			return fail(err)
+		}
+		topicParts, err = storage.ParseTopicPath(parent.TopicPath)
+		if err != nil {
+			return fail(err)
+		}
+		relPath = storage.ChildRelPath(parentRel, id, stage, slug)
+	} else if topic != "" {
+		topicParts, err = resolveTopicInput(home, topic)
+		if err != nil {
+			return fail(err)
+		}
+		relPath = storage.TopicRelPath(storage.JoinTopicPath(topicParts), id, stage, title)
 		if err := os.MkdirAll(filepath.Join(home, filepath.Dir(filepath.FromSlash(relPath))), 0o755); err != nil {
 			return err
 		}
@@ -89,6 +125,7 @@ func runCreate(home string, args []string) error {
 		Slug:         slug,
 		Labels:       labels,
 		TopicPath:    topicJSON,
+		ParentID:     parentID,
 		Stage:        stage,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -99,6 +136,19 @@ func runCreate(home string, args []string) error {
 	}
 	if err := storage.WriteIndex(home, id, relPath); err != nil {
 		return err
+	}
+	for _, text := range notes {
+		existing, err := storage.ReadTopicNotes(taskDir)
+		if err != nil {
+			return fail(err)
+		}
+		note := storage.TopicNote{
+			TS:   storage.NowTimestamp(len(existing) + 1),
+			Text: text,
+		}
+		if err := storage.AppendTopicNote(taskDir, note); err != nil {
+			return fail(fmt.Errorf("tsk create: append note: %w", err))
+		}
 	}
 	fmt.Println(id)
 	return nil

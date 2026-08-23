@@ -21,9 +21,48 @@ func runTopic(home string, args []string) error {
 		return runTopicSet(home, args[1:])
 	case "mkdir":
 		return runTopicMkdir(home, args[1:])
+	case "where":
+		return runTopicWhere(home, args[1:])
+	case "info":
+		return runTopicInfo(home, args[1:])
+	case "note":
+		return runTopicNote(home, args[1:])
+	case "notes":
+		return runTopicNotes(home, args[1:])
+	case "view":
+		return runTopicView(home, args[1:])
+	case "alias":
+		return runTopicAlias(home, args[1:])
 	default:
 		return fail(fmt.Errorf("tsk topic: unknown subcommand %q", args[0]))
 	}
+}
+
+func topicErr(format string, args ...any) error {
+	msg := fmt.Sprintf(format, args...)
+	if !strings.HasPrefix(msg, "Error:") {
+		msg = "Error: " + msg
+	}
+	return fail(fmt.Errorf("%s", msg))
+}
+
+func resolveTopicInput(home, ref string) ([]string, error) {
+	parts, err := storage.LookupTopicRef(home, ref)
+	if err != nil {
+		return nil, err
+	}
+	return parts, nil
+}
+
+func requireTopicDir(home, ref string) ([]string, string, error) {
+	parts, err := resolveTopicInput(home, ref)
+	if err != nil {
+		return nil, "", err
+	}
+	if !storage.TopicDirExists(home, parts) {
+		return nil, "", fmt.Errorf("topic not found: %s", ref)
+	}
+	return parts, storage.TopicAbs(home, parts), nil
 }
 
 func runTopicSet(home string, args []string) error {
@@ -42,12 +81,18 @@ func runTopicSet(home string, args []string) error {
 	case "--inbox", "":
 		topicParts = nil
 	default:
-		topicParts = splitTopic(args[1])
+		topicParts, err = resolveTopicInput(home, args[1])
+		if err != nil {
+			return fail(err)
+		}
 	}
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
 		return fail(err)
+	}
+	if task.ParentID != 0 {
+		return fail(fmt.Errorf("tsk topic set: nested task %d: reparent before changing topic", id))
 	}
 	_, err = storage.MoveTaskDir(home, &task, taskDir, topicParts)
 	return err
@@ -60,8 +105,30 @@ func runTopicMkdir(home string, args []string) error {
 		return fail(fmt.Errorf("tsk topic mkdir: path required"))
 	}
 	parts := splitTopic(args[0])
+	if len(parts) == 0 {
+		return fail(fmt.Errorf("tsk topic mkdir: path required"))
+	}
+	resolved, err := resolveTopicInput(home, args[0])
+	if err != nil {
+		return fail(err)
+	}
+	if !topicPartsEqual(resolved, parts) {
+		return topicErr("%s is an alias for %s", args[0], storage.JoinTopicPath(resolved))
+	}
 	dir := filepath.Join(home, "topics", filepath.Join(parts...))
 	return os.MkdirAll(dir, 0o755)
+}
+
+func topicPartsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func splitTopic(path string) []string {

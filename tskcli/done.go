@@ -11,7 +11,9 @@ import (
 func runDone(home string, args []string) error {
 	setCommand(currentCtx, "done", args)
 
+	var force bool
 	remaining, err := lessflags.
+		Bool("--force", &force).
 		Help("-h,--help", doneHelp()).
 		HelpNoExit().
 		Parse(args)
@@ -33,7 +35,10 @@ func runDone(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
-	if task.Stage != "summary" && task.Stage != "user_followup" {
+	if task.Stage == "done" {
+		return fail(fmt.Errorf("invalid transition: task is already done"))
+	}
+	if task.Stage != "summary" && task.Stage != "user_followup" && !force {
 		return fail(fmt.Errorf("invalid transition: done only from summary or user_followup"))
 	}
 	_, err = storage.RenameTaskDir(home, &task, taskDir, "done", "")

@@ -3,7 +3,7 @@
 **Feature**: advance from create renames directory and updates index
 
 ```
-create "add dark mode" -> advance 1 -> inbox/1-in_process-add-dark-mode/
+create "add dark mode" -> advance 1 -> inbox/[1]-in_process-add-dark-mode/
 ```
 
 ## Steps

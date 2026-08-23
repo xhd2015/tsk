@@ -26,10 +26,11 @@ type Task struct {
 	Slug         string              `json:"slug"`
 	Labels       []string            `json:"labels"`
 	TopicPath    json.RawMessage     `json:"topic_path"`
+	ParentID     int                 `json:"parent_id,omitempty"`
 	Stage        string              `json:"stage"`
 	CreatedAt    string              `json:"created_at"`
 	UpdatedAt    string              `json:"updated_at"`
-	StageHistory []StageHistoryEntry   `json:"stage_history"`
+	StageHistory []StageHistoryEntry `json:"stage_history"`
 }
 
 // ClarifyItem is one question in a clarify batch.
@@ -70,21 +71,101 @@ func Slugify(s string) string {
 	return s
 }
 
-// TaskDirName returns the directory name for a task.
+// TaskDirName returns the directory name for a task: [id]-<stage>-<slug>.
 func TaskDirName(id int, stage, slug string) string {
-	return fmt.Sprintf("%d-%s-%s", id, stage, slug)
+	return fmt.Sprintf("[%d]-%s-%s", id, stage, slug)
 }
 
-// InboxRelPath returns the inbox-relative path for a task directory.
+// InboxRelPath returns the inbox-relative path for a top-level task directory.
 func InboxRelPath(id int, stage, title string) string {
 	return filepath.ToSlash(filepath.Join("inbox", TaskDirName(id, stage, Slugify(title))))
 }
 
-// TopicRelPath returns the topic-relative path for a task directory.
+// TopicRelPath returns the topic-relative path for a top-level task directory.
 func TopicRelPath(topic string, id int, stage, title string) string {
 	parts := strings.Split(topic, "/")
 	all := append(parts, TaskDirName(id, stage, Slugify(title)))
 	return filepath.ToSlash(filepath.Join(append([]string{"topics"}, all...)...))
+}
+
+// ChildRelPath returns the relative path for a nested sub-task under parentRel.
+func ChildRelPath(parentRel string, id int, stage, slug string) string {
+	return filepath.ToSlash(filepath.Join(parentRel, TaskDirName(id, stage, slug)))
+}
+
+// RelFromHome returns the slash-separated path of abs relative to home.
+func RelFromHome(home, abs string) (string, error) {
+	rel, err := filepath.Rel(home, abs)
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(rel), nil
+}
+
+// RewriteIndexPrefix rewrites every index entry with path oldPrefix or under
+// oldPrefix/ to the corresponding newPrefix path.
+func RewriteIndexPrefix(home, oldPrefix, newPrefix string) error {
+	oldPrefix = filepath.ToSlash(oldPrefix)
+	newPrefix = filepath.ToSlash(newPrefix)
+	ids, err := ListTaskIDs(home)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		rel, err := ReadIndex(home, id)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == oldPrefix {
+			if err := WriteIndex(home, id, newPrefix); err != nil {
+				return err
+			}
+			continue
+		}
+		if strings.HasPrefix(rel, oldPrefix+"/") {
+			suffix := strings.TrimPrefix(rel, oldPrefix)
+			if err := WriteIndex(home, id, newPrefix+suffix); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// WalkTaskDirs visits taskDir and every nested task directory (skips context/clarify).
+func WalkTaskDirs(taskDir string, fn func(abs string, task Task) error) error {
+	task, err := ReadTask(taskDir)
+	if err != nil {
+		return err
+	}
+	if err := fn(taskDir, task); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(taskDir)
+	if err != nil {
+		return err
+	}
+	for _, ent := range entries {
+		if !ent.IsDir() || !IsTaskDirName(ent.Name()) {
+			continue
+		}
+		if err := WalkTaskDirs(filepath.Join(taskDir, ent.Name()), fn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TopLevelTaskRel builds inbox/ or topics/… relative path for a root-level task.
+func TopLevelTaskRel(topicParts []string, id int, stage, slug string) string {
+	name := TaskDirName(id, stage, slug)
+	if len(topicParts) == 0 {
+		return filepath.ToSlash(filepath.Join("inbox", name))
+	}
+	elems := append([]string{"topics"}, topicParts...)
+	elems = append(elems, name)
+	return filepath.ToSlash(filepath.Join(elems...))
 }
 
 // NullTopicPath is the JSON encoding for inbox tasks.
@@ -171,17 +252,20 @@ func WriteTask(taskDir string, task Task) error {
 	return nil
 }
 
-// RenameTaskDir renames a task directory and updates the index.
+// RenameTaskDir renames a task directory in place (path-preserving) and
+// cascades index updates for nested descendants.
 func RenameTaskDir(home string, task *Task, oldDir, newStage string, note string) (string, error) {
-	topicParts, err := ParseTopicPath(task.TopicPath)
+	oldRel, err := RelFromHome(home, oldDir)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("rel task dir: %w", err)
 	}
+	parentRel := filepath.ToSlash(filepath.Dir(oldRel))
+	newName := TaskDirName(task.ID, newStage, task.Slug)
 	var newRel string
-	if len(topicParts) == 0 {
-		newRel = InboxRelPath(task.ID, newStage, task.Title)
+	if parentRel == "." || parentRel == "" {
+		newRel = newName
 	} else {
-		newRel = TopicRelPath(strings.Join(topicParts, "/"), task.ID, newStage, task.Title)
+		newRel = filepath.ToSlash(filepath.Join(parentRel, newName))
 	}
 	newAbs := filepath.Join(home, filepath.FromSlash(newRel))
 	if err := os.MkdirAll(filepath.Dir(newAbs), 0o755); err != nil {
@@ -202,20 +286,23 @@ func RenameTaskDir(home string, task *Task, oldDir, newStage string, note string
 	if err := WriteTask(newAbs, *task); err != nil {
 		return "", err
 	}
-	if err := WriteIndex(home, task.ID, newRel); err != nil {
+	if err := RewriteIndexPrefix(home, oldRel, newRel); err != nil {
 		return "", err
 	}
 	return newAbs, nil
 }
 
-// MoveTaskDir moves a task directory to a new location and updates index/topic_path.
+// MoveTaskDir moves a root-level task directory (and nested children) to a new
+// topic or inbox location and updates index/topic_path for the whole subtree.
 func MoveTaskDir(home string, task *Task, oldDir string, topicParts []string) (string, error) {
-	var newRel string
-	if len(topicParts) == 0 {
-		newRel = InboxRelPath(task.ID, task.Stage, task.Title)
-	} else {
-		newRel = TopicRelPath(strings.Join(topicParts, "/"), task.ID, task.Stage, task.Title)
+	if task.ParentID != 0 {
+		return "", fmt.Errorf("nested task %d: reparent before changing topic", task.ID)
 	}
+	oldRel, err := RelFromHome(home, oldDir)
+	if err != nil {
+		return "", fmt.Errorf("rel task dir: %w", err)
+	}
+	newRel := TopLevelTaskRel(topicParts, task.ID, task.Stage, task.Slug)
 	newAbs := filepath.Join(home, filepath.FromSlash(newRel))
 	if err := os.MkdirAll(filepath.Dir(newAbs), 0o755); err != nil {
 		return "", fmt.Errorf("mkdir parent: %w", err)
@@ -227,12 +314,23 @@ func MoveTaskDir(home string, task *Task, oldDir string, topicParts []string) (s
 	if err != nil {
 		return "", err
 	}
+	now := NowTimestamp(task.ID)
 	task.TopicPath = topicJSON
-	task.UpdatedAt = NowTimestamp(task.ID)
+	task.UpdatedAt = now
 	if err := WriteTask(newAbs, *task); err != nil {
 		return "", err
 	}
-	if err := WriteIndex(home, task.ID, newRel); err != nil {
+	if err := WalkTaskDirs(newAbs, func(abs string, t Task) error {
+		if abs == newAbs {
+			return nil
+		}
+		t.TopicPath = topicJSON
+		t.UpdatedAt = now
+		return WriteTask(abs, t)
+	}); err != nil {
+		return "", err
+	}
+	if err := RewriteIndexPrefix(home, oldRel, newRel); err != nil {
 		return "", err
 	}
 	return newAbs, nil

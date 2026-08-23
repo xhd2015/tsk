@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Task directory under `topics/eng/backend/1-create-x/`.
+- Task directory under `topics/eng/backend/[1]-create-x/`.
 - `index/1` points at the topic-relative path.
 - `task.json` has `topic_path: ["engineering","backend"]` or `["eng","backend"]` matching the topic segments.
 

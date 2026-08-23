@@ -30,7 +30,7 @@ func runShow(home string, args []string) error {
 		return fail(err)
 	}
 
-	task, _, err := storage.LoadTaskByID(home, id)
+	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
 		return fail(err)
 	}
@@ -51,6 +51,9 @@ func runShow(home string, args []string) error {
 	fmt.Printf("slug: %s\n", task.Slug)
 	fmt.Printf("stage: %s\n", task.Stage)
 	fmt.Printf("topic: %s\n", topicStr)
+	if task.ParentID != 0 {
+		fmt.Printf("parent: %d\n", task.ParentID)
+	}
 	if len(task.Labels) == 0 {
 		fmt.Println("labels:")
 	} else {
@@ -58,5 +61,29 @@ func runShow(home string, args []string) error {
 	}
 	fmt.Printf("created_at: %s\n", task.CreatedAt)
 	fmt.Printf("updated_at: %s\n", task.UpdatedAt)
+	journal, err := storage.ReadTopicNotes(taskDir)
+	if err != nil {
+		return fail(err)
+	}
+	fmt.Printf("notes: %d\n", len(journal))
+
+	var progressNotes []storage.TopicNote
+	for _, n := range journal {
+		if storage.NoteHasAllLabels(n, []string{"progress"}) {
+			progressNotes = append(progressNotes, n)
+		}
+	}
+	if len(progressNotes) > 0 {
+		latest := progressNotes[len(progressNotes)-1]
+		word := "entries"
+		if len(progressNotes) == 1 {
+			word = "entry"
+		}
+		if latest.Status != "" {
+			fmt.Printf("progress: %s (%d %s)\n", latest.Status, len(progressNotes), word)
+		} else {
+			fmt.Printf("progress: %d %s\n", len(progressNotes), word)
+		}
+	}
 	return nil
 }
