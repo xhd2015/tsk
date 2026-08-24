@@ -19,6 +19,7 @@ Commands:
   clarify    manage clarification questions
   followup   add followup context from summary
   done       mark task done (use --force to bypass the workflow stage requirement)
+  delete     permanently remove a task (use --recursive for nested sub-tasks)
   channel    manage conversational channels
   note       add or list timestamped notes on a task
   progress   record and list progress entries on a task
@@ -420,5 +421,19 @@ Use --force to complete it from any non-terminal stage.
 Flags:
   --force         bypass the normal workflow stage requirement
   -h, --help      show this help
+`
+}
+
+func deleteHelp() string {
+	return `Usage: tsk delete [--recursive] <id>
+
+Permanently remove a task directory and its index entry.
+Nested sub-tasks require --recursive (deletes the whole subtree).
+
+Unlike tsk done, the task does not remain in the tree.
+
+Flags:
+  --recursive   also delete nested sub-tasks under this task
+  -h, --help    show this help
 `
 }

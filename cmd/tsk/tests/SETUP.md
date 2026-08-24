@@ -497,7 +497,7 @@ func assertStderrContainsCount(t *testing.T, stderr, substr string, want int) {
 func topLevelSubcommands() []string {
 	return []string{
 		"create", "list", "show", "status", "advance", "stage", "next",
-		"label", "topic", "clarify", "followup", "done", "channel", "note", "progress", "tree", "skill",
+		"label", "topic", "clarify", "followup", "done", "delete", "channel", "note", "progress", "tree", "skill",
 	}
 }
 

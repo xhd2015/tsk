@@ -37,7 +37,8 @@ product model and agent workflows.
    them as `tsk create … --note "…" "title"` (repeatable). Use
    `tsk note add --id N …` only for notes after the task already exists.
 4. Advance stages when doing real work; use `tsk done` (or `--force`) only
-   when finishing.
+   when finishing. Use `tsk delete` to permanently remove a mistaken or
+   duplicate task (`--recursive` if it has nested sub-tasks).
 5. Do not `tsk topic set` on a nested child — reparent first.
 
 ## Topics
@@ -46,7 +47,7 @@ product model and agent workflows.
 - `create` — inbox, topic, `--parent`, and one-shot `--note`
 - `tree` — full tree, `--id`, JSON/color/plain
 - `topic` — mkdir/set/view/alias; nested-task restrictions
-- `workflow` — stages, advance, clarify, followup, done, status, next
+- `workflow` — stages, advance, clarify, followup, done, delete, status, next
 - `note` — notes and progress on existing tasks (see also `create --note`)
 - `channel` — Slack-like channels
 
