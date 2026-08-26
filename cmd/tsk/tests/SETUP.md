@@ -148,6 +148,7 @@ var tskEnvBaseDrop = map[string]struct{}{
 	"TSK_STATUS_FORMAT": {},
 	"TSK_HOME":          {},
 	"TSK_DATE":          {},
+	"NO_COLOR":          {},
 }
 
 func envKey(entry string) string {
@@ -497,7 +498,7 @@ func assertStderrContainsCount(t *testing.T, stderr, substr string, want int) {
 func topLevelSubcommands() []string {
 	return []string{
 		"create", "list", "show", "status", "advance", "stage", "next",
-		"label", "topic", "clarify", "followup", "done", "delete", "channel", "note", "progress", "tree", "skill",
+		"label", "topic", "clarify", "followup", "done", "delete", "channel", "note", "progress", "search", "tree", "skill",
 	}
 }
 

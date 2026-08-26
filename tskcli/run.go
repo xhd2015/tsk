@@ -89,6 +89,8 @@ func dispatch(home string, args []string) error {
 		return runTree(home, args[1:])
 	case "progress":
 		return runProgress(home, args[1:])
+	case "search":
+		return runSearch(home, args[1:])
 	case "skill":
 		return runSkill(home, args[1:])
 	default:

@@ -23,6 +23,7 @@ Commands:
   channel    manage conversational channels
   note       add or list timestamped notes on a task
   progress   record and list progress entries on a task
+  search     search task titles and note/progress/topic text
   tree       print all tasks organized by topic tree
   skill      show/install embedded skill docs
 
@@ -346,6 +347,26 @@ Print the latest progress entry for a task.
 
 Flags:
   --id ID      task id (required)
+  -h, --help   show this help
+`
+}
+
+func searchHelp() string {
+	return `Usage: tsk search [options] <query>
+
+Search task titles and note/progress/topic note text under TSK_HOME.
+Case-insensitive substring match. With no kind flags, searches all surfaces
+(same as --all). When --all appears with other kind flags, --all wins.
+
+Flags:
+  --task       search task titles
+  --note       search task notes (excludes progress entries)
+  --progress   search progress entries
+  --topic      search topic notes
+  --all        search all surfaces (default when none given)
+  --color      force ANSI color on (even when stdout is not a TTY)
+  --no-color   force ANSI color off
+  --json       JSON array (no ANSI)
   -h, --help   show this help
 `
 }
