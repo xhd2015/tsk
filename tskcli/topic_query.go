@@ -143,6 +143,11 @@ func runTopicNote(home string, args []string) error {
 	if len(remaining) < 2 {
 		return topicErr("tsk topic note: topic and text required")
 	}
+	for _, l := range labels {
+		if err := storage.ValidateLabel(l); err != nil {
+			return topicErr("tsk topic note: %v", err)
+		}
+	}
 	parts, dir, err := requireTopicDir(home, remaining[0])
 	if err != nil {
 		return topicErr("%s", err.Error())
@@ -191,6 +196,11 @@ func runTopicNotes(home string, args []string) error {
 	}
 	if limit < 0 {
 		return topicErr("tsk topic notes: --limit must be >= 0")
+	}
+	for _, l := range labels {
+		if err := storage.ValidateLabel(l); err != nil {
+			return topicErr("tsk topic notes: %v", err)
+		}
 	}
 	parts, dir, err := requireTopicDir(home, remaining[0])
 	if err != nil {

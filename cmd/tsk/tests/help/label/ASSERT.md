@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Stdout lists `add` and `rm` subcommands.
+- Stdout lists `add`, `rm`, and `list` subcommands.
 - Stdout non-empty, ends with `\n`.
 - Stderr empty.
 
@@ -15,5 +15,6 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertHelpOK(t, resp)
 	assertContains(t, resp.Stdout, "add")
 	assertContains(t, resp.Stdout, "rm")
+	assertContains(t, resp.Stdout, "list")
 }
 ```

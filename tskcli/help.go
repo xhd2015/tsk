@@ -14,7 +14,7 @@ Commands:
   advance    advance task to next stage
   stage      set task stage directly
   next       print oldest in_process task id
-  label      add or remove labels
+  label      add, remove, or list labels
   topic      set topic path or mkdir topic tree
   clarify    manage clarification questions
   followup   add followup context from summary
@@ -167,7 +167,7 @@ Append a timestamped note to the topic journal (notes.jsonl).
 Does not replace earlier notes.
 
 Flags:
-  --label LABEL   label for this note (repeatable)
+  --label LABEL   label for this note (repeatable); bare name or key=value
   -h, --help      show this help
 `
 }
@@ -178,7 +178,8 @@ func topicNotesHelp() string {
 List timestamped topic notes (oldest first).
 
   <topic>     topic path or alias
-  --label LABEL   only notes that have this label (repeatable, AND)
+  --label LABEL   only notes that have this label (repeatable, AND);
+                  bare name matches name or name=*; key=value is exact
   --json          JSON array (no ANSI)
   --limit N       last N notes only
   -h, --help      show this help
@@ -204,7 +205,7 @@ Append a timestamped note to a task.
 
 Flags:
   --id ID         task id (required)
-  --label LABEL   label for this note (repeatable)
+  --label LABEL   label for this note (repeatable); bare name or key=value
   -h, --help      show this help
 `
 }
@@ -216,7 +217,8 @@ List notes for a task (oldest first).
 
 Flags:
   --id ID          task id (required)
-  --label LABEL   only notes that have this label (repeatable, AND)
+  --label LABEL   only notes that have this label (repeatable, AND);
+                  bare name matches name or name=*; key=value is exact
   --show-index     prefix each note with 1-based index
   --json          JSON array (no ANSI)
   --limit N       last N notes only
@@ -237,7 +239,8 @@ as ` + "`note list`" + `. Use ` + "`note list --show-index`" + ` to see indices.
 Flags:
   --id ID          task id (required)
   --index N        1-based index into filtered notes (required)
-  --label LABEL    filter by label (repeatable, AND)
+  --label LABEL    filter by label (repeatable, AND); bare name matches
+                   name or name=*; key=value is exact
   --status STATUS  replace status (optional; preserved if omitted)
   --append         append text to existing note text instead of replacing
   -h, --help       show this help
@@ -407,8 +410,19 @@ func labelHelp() string {
 Subcommands:
   add <id> <label>   add label to task
   rm <id> <label>    remove label from task
+  list               list deduped label names in use (tasks + notes)
 
   -h, --help         show this help
+`
+}
+
+func labelListHelp() string {
+	return `Usage: tsk label list
+
+List deduplicated label names from all tasks and notes (including topic
+notes). For key=value note labels, the key is listed once.
+
+  -h, --help  show this help
 `
 }
 

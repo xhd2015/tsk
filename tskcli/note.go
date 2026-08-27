@@ -71,6 +71,15 @@ func loadTaskDir(home string, id int) (string, error) {
 	return dir, nil
 }
 
+func validateNoteLabels(cmd string, labels []string) error {
+	for _, l := range labels {
+		if err := storage.ValidateLabel(l); err != nil {
+			return noteErr("%s: %v", cmd, err)
+		}
+	}
+	return nil
+}
+
 func runNoteAdd(home string, args []string) error {
 	setCommand(currentCtx, "note", append([]string{"add"}, args...))
 
@@ -90,6 +99,9 @@ func runNoteAdd(home string, args []string) error {
 	}
 	id, err := parseRequiredTaskID(idStr, "tsk note add")
 	if err != nil {
+		return err
+	}
+	if err := validateNoteLabels("tsk note add", labels); err != nil {
 		return err
 	}
 	if len(remaining) == 0 {
@@ -145,6 +157,9 @@ func runNoteList(home string, args []string) error {
 	}
 	if limit < 0 {
 		return noteErr("tsk note list: --limit must be >= 0")
+	}
+	if err := validateNoteLabels("tsk note list", labels); err != nil {
+		return err
 	}
 	id, err := parseRequiredTaskID(idStr, "tsk note list")
 	if err != nil {
@@ -207,6 +222,9 @@ func runNoteEdit(home string, args []string) error {
 	}
 	id, err := parseRequiredTaskID(idStr, "tsk note edit")
 	if err != nil {
+		return err
+	}
+	if err := validateNoteLabels("tsk note edit", labels); err != nil {
 		return err
 	}
 	if indexStr == "" {

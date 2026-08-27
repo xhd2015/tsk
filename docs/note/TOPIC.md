@@ -21,12 +21,21 @@ tsk note list --id ID [--label L]…
 tsk note edit --id ID --index N [--append] <text…>
 ```
 
+Labels are boolean-style tokens or `key=value` (first `=` splits; empty
+value `key=` is allowed; empty key is rejected). Filter with `--label`:
+bare `key` matches `key` or any `key=…`; `key=value` is exact. Multiple
+`--label` flags AND together.
+
 Use notes for durable pointers agents and humans need later, for example:
 
 ```bash
 tsk note add --id 9 "dir W0/knowledge-workspace/credit-pricing-center-doctest-backfill"
-tsk note add --id 9 "grok session 01a02283-…: backfill doctests for critical biz paths"
+tsk note add --id 9 --label grok-session-id=01a02283-… "backfill doctests for critical biz paths"
 ```
+
+Convention: store Grok session ids as `grok-session-id=<uuid>` (not bare
+`grok` / `session-id` with the id in text). Filter with
+`tsk note list --id N --label grok-session-id`.
 
 `tree --id N` shows notes and progress under the task leaf.
 

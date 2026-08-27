@@ -20,18 +20,70 @@ type TopicNote struct {
 	Status string   `json:"status,omitempty"`
 }
 
+// ParseLabel splits a note label token into key and optional value.
+// Bare "name" has no value. "name=value" splits on the first '=';
+// value may be empty ("name=") or contain further '=' characters.
+// Empty token or empty key ("=x") is an error.
+func ParseLabel(token string) (key, value string, hasValue bool, err error) {
+	if token == "" {
+		return "", "", false, fmt.Errorf("invalid label %q: empty", token)
+	}
+	i := strings.IndexByte(token, '=')
+	if i < 0 {
+		return token, "", false, nil
+	}
+	key = token[:i]
+	if key == "" {
+		return "", "", false, fmt.Errorf("invalid label %q: empty key", token)
+	}
+	return key, token[i+1:], true, nil
+}
+
+// ValidateLabel reports whether token is a valid bare or key=value label.
+func ValidateLabel(token string) error {
+	_, _, _, err := ParseLabel(token)
+	return err
+}
+
+// LabelName returns the bare name or the key portion of a key=value label.
+func LabelName(token string) (string, error) {
+	key, _, _, err := ParseLabel(token)
+	return key, err
+}
+
+// LabelMatches reports whether a stored label satisfies a filter token.
+// A key=value want matches only that exact token. A bare want matches the
+// same bare label or any key=value whose key equals want.
+func LabelMatches(have, want string) bool {
+	wantKey, _, wantHasValue, err := ParseLabel(want)
+	if err != nil {
+		return have == want
+	}
+	if wantHasValue {
+		return have == want
+	}
+	haveKey, _, _, err := ParseLabel(have)
+	if err != nil {
+		return have == want
+	}
+	return haveKey == wantKey
+}
+
 // NoteHasAllLabels reports whether n has every label in want (AND).
-// Empty want matches every note.
+// Empty want matches every note. Bare wants match key presence (see LabelMatches).
 func NoteHasAllLabels(n TopicNote, want []string) bool {
 	if len(want) == 0 {
 		return true
 	}
-	have := make(map[string]struct{}, len(n.Labels))
-	for _, l := range n.Labels {
-		have[l] = struct{}{}
-	}
-	for _, l := range want {
-		if _, ok := have[l]; !ok {
+	for _, w := range want {
+		ok := false
+		for _, h := range n.Labels {
+			if LabelMatches(h, w) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
 			return false
 		}
 	}
