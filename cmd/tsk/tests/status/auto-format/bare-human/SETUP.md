@@ -4,7 +4,7 @@
 
 ```
 # ExtraEnv empty; tskEnv cleared CODEX/PI/TSK_STATUS_FORMAT
-tsk create "auto bare human" -> tsk status <id> -> diagram box art
+tsk add "auto bare human" -> tsk status <id> -> diagram box art
 ```
 
 ## Steps

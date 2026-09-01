@@ -10,7 +10,7 @@ create -> note list --id -> 0 notes
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "empty notes", "", nil)
+	id := addTask(t, req, "empty notes", "", nil)
 	req.Args = []string{"note", "list", "--id", fmt.Sprintf("%d", id)}
 	return nil
 }

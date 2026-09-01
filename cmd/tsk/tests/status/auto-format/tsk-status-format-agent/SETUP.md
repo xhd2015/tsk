@@ -4,7 +4,7 @@
 
 ```
 # ExtraEnv TSK_STATUS_FORMAT=agent only (no CODEX/PI)
-tsk create -> TSK_STATUS_FORMAT=agent tsk status <id> -> agent facts
+tsk add -> TSK_STATUS_FORMAT=agent tsk status <id> -> agent facts
 ```
 
 ## Steps

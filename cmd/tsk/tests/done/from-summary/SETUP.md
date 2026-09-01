@@ -18,7 +18,7 @@ import (
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "finish line"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "summary")
 	req.TaskID = id
 	req.Args = []string{"done", fmt.Sprintf("%d", id)}

@@ -26,10 +26,14 @@ Name: `[id]-<stage>-<slug>/` under inbox, a topic, or a parent task dir.
 
 Contains:
 
-- `task.json` — id, title, slug, labels, topic_path, optional parent_id, stage, timestamps, stage_history
+- `task.json` — id, title, slug, labels, topic_path, optional parent_id, optional cwd, optional project `{id,name}`, stage, timestamps, stage_history
 - `context/` — followup markdown and similar artifacts
 - `clarify/` — present during clarification (`batch.json`)
 - nested `[child]-…/` — sub-tasks (any depth)
+
+Optional `project` is set by `tsk project add`: `{origin}` when git remote exists,
+or `{name}` for a registered non-git project (prefer origin). Optional `cwd` is
+the absolute CLI recording directory. Registry: `projects.json`.
 
 Reserved non-task children: `context`, `clarify` (and note/progress jsonl files on the task or topic).
 

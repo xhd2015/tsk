@@ -31,7 +31,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		assertAgentFuture(t, resp.Stdout, stage)
 	}
 
-	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "create", "false")
+	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "add", "false")
 	assertAgentHasFactKeys(t, resp.Stdout, "advance")
 	assertAgentAdvanceOK(t, resp.Stdout, "in_process")
 }

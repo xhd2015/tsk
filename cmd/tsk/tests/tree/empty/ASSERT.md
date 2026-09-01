@@ -16,7 +16,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	if resp.Stderr != "" {
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
-	want := ".\n(empty)\n0 tasks, 0 topics\n"
+	want := ".\n(empty)\n0 tasks, 0 topics, 0 projects\n"
 	if resp.Stdout != want {
 		t.Fatalf("stdout=%q want %q", resp.Stdout, want)
 	}

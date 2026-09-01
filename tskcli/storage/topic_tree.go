@@ -8,19 +8,29 @@ import (
 
 // TopicTreeTask is one task node in a topic/inbox view (may nest sub-tasks).
 type TopicTreeTask struct {
-	ID    int            `json:"id"`
-	Stage string         `json:"stage"`
-	Slug  string         `json:"slug"`
-	Dir   string         `json:"dir"`
-	Tasks []TopicTreeTask `json:"tasks,omitempty"`
+	ID      int             `json:"id"`
+	Stage   string          `json:"stage"`
+	Slug    string          `json:"slug"`
+	Dir     string          `json:"dir"`
+	Project *ProjectRef     `json:"project,omitempty"`
+	Tasks   []TopicTreeTask `json:"tasks,omitempty"`
+}
+
+// TopicProjectGroup is a project bucket under inbox or a topic (JSON / view).
+type TopicProjectGroup struct {
+	Origin string          `json:"origin,omitempty"`
+	Name   string          `json:"name,omitempty"`
+	Label  string          `json:"label"`
+	Tasks  []TopicTreeTask `json:"tasks"`
 }
 
 // TopicTree is a topic directory and its nested tasks / sub-topics.
 type TopicTree struct {
-	Path      string          `json:"path"`
-	Aliases   []string        `json:"aliases"`
-	Tasks     []TopicTreeTask `json:"tasks"`
-	Subtopics []TopicTree     `json:"subtopics"`
+	Path      string              `json:"path"`
+	Aliases   []string            `json:"aliases"`
+	Tasks     []TopicTreeTask     `json:"tasks"`
+	Projects  []TopicProjectGroup `json:"projects,omitempty"`
+	Subtopics []TopicTree         `json:"subtopics"`
 }
 
 // LoadTopicTree walks the topic directory (not task dirs, not json/jsonl files).
@@ -88,6 +98,12 @@ func loadTaskTreeAt(dir, name string) (TopicTreeTask, error) {
 		Stage: stage,
 		Slug:  slug,
 		Dir:   name,
+	}
+	if task, err := ReadTask(dir); err == nil && task.Project != nil {
+		if task.Project.Origin != "" || task.Project.Name != "" {
+			p := *task.Project
+			node.Project = &p
+		}
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {

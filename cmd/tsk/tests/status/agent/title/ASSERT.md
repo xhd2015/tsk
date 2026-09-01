@@ -39,10 +39,10 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertAgentSpineOrder(t, resp.Stdout)
 
 	// Strict leading facts block; dir: literal from stdout (Option A)
-	assertAgentLeadingFactsShape(t, resp.Stdout, "add dark mode", "create", "false", agentInboxTopic)
+	assertAgentLeadingFactsShape(t, resp.Stdout, "add dark mode", "add", "false", agentInboxTopic)
 
 	// Cross-check helpers (value + key order) against full stdout
-	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "create", "false")
+	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "add", "false")
 	assertAgentFact(t, resp.Stdout, "title", "add dark mode")
 }
 ```

@@ -3,7 +3,7 @@
 **Feature**: agent format always draws a second back-line row with user_followup, refine, and questions (no satisfied on art)
 
 ```
-tsk create -> tsk status --format=agent <id>
+tsk add -> tsk status --format=agent <id>
 # row2: refine + user_followup + questions under spine; satisfied not drawn
 ```
 
@@ -15,7 +15,7 @@ tsk create -> tsk status --format=agent <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "agent two rows"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = agentStatusArgs(id)
 	return nil

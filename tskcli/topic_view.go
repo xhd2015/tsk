@@ -50,8 +50,10 @@ func runTopicView(home string, args []string) error {
 type viewNode struct {
 	name   string
 	extra  string
+	mark   string // kind prefix e.g. "▣ " / "# "; drawn dim when color
 	nested *storage.TopicTree
 	tasks  []storage.TopicTreeTask
+	kids   []viewNode // explicit children (project groups, prebuilt trees)
 	color  bool
 	styled bool
 }
@@ -119,6 +121,15 @@ func writeViewKids(b *strings.Builder, kids []viewNode, prefix string) {
 		if kid.styled {
 			b.WriteString(ansiGray + ansiStrikethrough)
 		}
+		if kid.mark != "" {
+			if kid.color && !kid.styled {
+				b.WriteString(ansiGray)
+				b.WriteString(kid.mark)
+				b.WriteString(ansiReset)
+			} else {
+				b.WriteString(kid.mark)
+			}
+		}
 		b.WriteString(kid.name)
 		b.WriteString(kid.extra)
 		if kid.styled {
@@ -126,7 +137,9 @@ func writeViewKids(b *strings.Builder, kids []viewNode, prefix string) {
 		}
 		b.WriteByte('\n')
 		var nested []viewNode
-		if kid.nested != nil {
+		if len(kid.kids) > 0 {
+			nested = kid.kids
+		} else if kid.nested != nil {
 			nested = viewChildren(kid.nested, kid.color)
 		} else if len(kid.tasks) > 0 {
 			nested = taskViewChildren(kid.tasks, kid.color)

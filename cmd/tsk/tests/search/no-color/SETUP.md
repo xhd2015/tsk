@@ -10,7 +10,7 @@ note hit -> search --no-color query -> no escapes
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "plain demo", "", nil)
+	id := addTask(t, req, "plain demo", "", nil)
 	runTskOK(t, req, "note", "add", "--id", fmt.Sprintf("%d", id), "plain-token-xyz")
 	req.Args = []string{"search", "--no-color", "plain-token-xyz"}
 	return nil

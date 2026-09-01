@@ -18,7 +18,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 	assertNoANSI(t, resp.Stdout)
-	want := "{\"inbox\":[{\"id\":1,\"stage\":\"done\",\"slug\":\"solo\",\"dir\":\"[1]-done-solo\"}],\"topics\":[{\"path\":\"kb\",\"aliases\":[],\"tasks\":[{\"id\":2,\"stage\":\"create\",\"slug\":\"report\",\"dir\":\"[2]-create-report\"}],\"subtopics\":[]}]}\n"
+	want := "{\"inbox\":[{\"id\":1,\"stage\":\"done\",\"slug\":\"solo\",\"dir\":\"[1]-done-solo\"}],\"inbox_projects\":[],\"topics\":[{\"path\":\"kb\",\"aliases\":[],\"tasks\":[{\"id\":2,\"stage\":\"create\",\"slug\":\"report\",\"dir\":\"[2]-create-report\"}],\"subtopics\":[]}]}\n"
 	if resp.Stdout != want {
 		t.Fatalf("stdout=%q want %q", resp.Stdout, want)
 	}

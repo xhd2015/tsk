@@ -2,7 +2,7 @@
 
 - Exit code 0.
 - `events.jsonl` exists with at least one line.
-- Last event has `command` identifying create (e.g. `"create"`) and `exit_code: 0`.
+- Last event has `command` identifying add (e.g. `"add"`) and `exit_code: 0`.
 
 ## Side Effects
 
@@ -30,7 +30,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 
 	assertEventsCountAtLeast(t, req, 1)
-	assertLastEventCommand(t, req, "create")
+	assertLastEventCommand(t, req, "add")
 
 	path := filepath.Join(req.TskHome, "events.jsonl")
 	data, err := os.ReadFile(path)

@@ -22,10 +22,12 @@ var SkillMD string
 // in TreeFS so ListTreeTopics only enumerates real topics.
 //
 //go:embed overview
-//go:embed create
+//go:embed add
 //go:embed tree
 //go:embed topic
 //go:embed workflow
 //go:embed note
 //go:embed channel
+//go:embed project
+//go:embed install
 var TreeFS embed.FS

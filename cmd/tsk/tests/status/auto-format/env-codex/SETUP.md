@@ -4,7 +4,7 @@
 
 ```
 # ExtraEnv CODEX_THREAD_ID=t1; no --format/--color/--plain
-tsk create -> CODEX_THREAD_ID=t1 tsk status <id> -> agent facts (id/title/topic/dir)
+tsk add -> CODEX_THREAD_ID=t1 tsk status <id> -> agent facts (id/title/topic/dir)
 ```
 
 ## Steps

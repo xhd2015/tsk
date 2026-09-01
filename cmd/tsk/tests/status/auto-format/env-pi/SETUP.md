@@ -4,7 +4,7 @@
 
 ```
 # ExtraEnv PI_CODING_AGENT=1; no --format/--color/--plain
-tsk create -> PI_CODING_AGENT=1 tsk status <id> -> agent facts
+tsk add -> PI_CODING_AGENT=1 tsk status <id> -> agent facts
 ```
 
 ## Steps

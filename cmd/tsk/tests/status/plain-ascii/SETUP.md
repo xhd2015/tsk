@@ -3,7 +3,7 @@
 **Feature**: status --plain renders ASCII box art without ANSI or theme
 
 ```
-tsk create -> tsk status --plain <id>
+tsk add -> tsk status --plain <id>
 ```
 
 ## Steps
@@ -14,7 +14,7 @@ tsk create -> tsk status --plain <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "plain ascii"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = statusArgs(id, "--plain")
 	return nil

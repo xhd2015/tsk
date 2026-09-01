@@ -3,7 +3,7 @@
 **Feature**: `tsk status --format=diagram` stdout is byte-equal to the committed unicode golden
 
 ```
-tsk create -> tsk status --format=diagram <id>  # no --color; art is stage-independent without ANSI
+tsk add -> tsk status --format=diagram <id>  # no --color; art is stage-independent without ANSI
 ```
 
 ## Steps
@@ -15,7 +15,7 @@ tsk create -> tsk status --format=diagram <id>  # no --color; art is stage-indep
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "diagram golden"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = statusArgs(id, "--format=diagram")
 	return nil

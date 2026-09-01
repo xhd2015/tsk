@@ -5,7 +5,7 @@
 ```
 # ExtraEnv CODEX_THREAD_ID=t1 + TSK_STATUS_FORMAT=diagram
 # TSK_STATUS_FORMAT beats detect; no --format flag
-tsk create -> env tsk status <id> -> diagram (not agent)
+tsk add -> env tsk status <id> -> diagram (not agent)
 ```
 
 ## Steps

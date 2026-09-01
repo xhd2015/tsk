@@ -4,7 +4,7 @@
 
 ```
 # ExtraEnv CODEX_THREAD_ID=t1; argv --format=diagram
-tsk create -> CODEX_THREAD_ID=t1 tsk status --format=diagram <id> -> diagram
+tsk add -> CODEX_THREAD_ID=t1 tsk status --format=diagram <id> -> diagram
 ```
 
 ## Steps

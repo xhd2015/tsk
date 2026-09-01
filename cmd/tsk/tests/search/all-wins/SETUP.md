@@ -10,7 +10,7 @@ note has unique id -> search --task --all <id> -> note hit (all wins)
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "plain title", "", nil)
+	id := addTask(t, req, "plain title", "", nil)
 	runTskOK(t, req, "note", "add", "--id", fmt.Sprintf("%d", id), "unique-all-wins-token")
 	req.Args = []string{"search", "--task", "--all", "unique-all-wins-token"}
 	return nil

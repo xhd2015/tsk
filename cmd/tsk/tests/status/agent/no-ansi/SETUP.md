@@ -3,7 +3,7 @@
 **Feature**: agent format never emits ANSI even when --color is passed
 
 ```
-tsk create -> tsk status --format=agent --color <id>  # color ignored
+tsk add -> tsk status --format=agent --color <id>  # color ignored
 ```
 
 ## Steps
@@ -14,7 +14,7 @@ tsk create -> tsk status --format=agent --color <id>  # color ignored
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "agent no ansi"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = agentStatusArgs(id, "--color")
 	return nil

@@ -10,8 +10,8 @@ create parent -> create --parent 1 child -> delete 2 -> child gone; parent stays
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	parentID := createTask(t, req, "parent work", "", nil)
-	runTskOK(t, req, "create", "--parent", fmt.Sprintf("%d", parentID), "child work")
+	parentID := addTask(t, req, "parent work", "", nil)
+	runTskOK(t, req, "add", "--parent", fmt.Sprintf("%d", parentID), "child work")
 	childID := maxTaskID(t, req)
 	req.TaskID = childID
 	req.Title = "child work"

@@ -8,7 +8,7 @@ create -> note add (labeled) -> note add (unlabeled) -> edit by label+index -> l
 
 ## Steps
 
-1. `tsk create "demo"`.
+1. `tsk add "demo"`.
 2. `tsk note add --id 1 --label grok "session abc"`.
 3. `tsk note add --id 1 "other note"`.
 4. `tsk note edit --id 1 --label grok --index 1 "session xyz"`.
@@ -16,7 +16,7 @@ create -> note add (labeled) -> note add (unlabeled) -> edit by label+index -> l
 
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	createTask(t, req, "demo", "", nil)
+	addTask(t, req, "demo", "", nil)
 	runTskOK(t, req, "note", "add", "--id", "1", "--label", "grok", "session abc")
 	runTskOK(t, req, "note", "add", "--id", "1", "other note")
 	runTskOK(t, req, "note", "edit", "--id", "1", "--label", "grok", "--index", "1", "session xyz")

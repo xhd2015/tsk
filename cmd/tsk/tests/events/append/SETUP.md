@@ -3,17 +3,17 @@
 **Feature**: successful create appends audit event
 
 ```
-tsk create "audit me" -> events.jsonl line for create
+tsk add "audit me" -> events.jsonl line for add
 ```
 
 ## Steps
 
-1. Run `tsk create "audit me"`.
+1. Run `tsk add "audit me"`.
 
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "audit me"
-	req.Args = []string{"create", req.Title}
+	req.Args = []string{"add", req.Title}
 	return nil
 }
 ```

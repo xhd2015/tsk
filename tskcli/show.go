@@ -54,6 +54,16 @@ func runShow(home string, args []string) error {
 	if task.ParentID != 0 {
 		fmt.Printf("parent: %d\n", task.ParentID)
 	}
+	if task.Cwd != "" {
+		fmt.Printf("cwd: %s\n", task.Cwd)
+	}
+	if task.Project != nil {
+		if task.Project.Origin != "" {
+			fmt.Printf("project: %s\n", task.Project.Origin)
+		} else if task.Project.Name != "" {
+			fmt.Printf("project: %s\n", task.Project.Name)
+		}
+	}
 	if len(task.Labels) == 0 {
 		fmt.Println("labels:")
 	} else {

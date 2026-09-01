@@ -39,7 +39,7 @@ func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 func createForAutoFormat(t *testing.T, req *Request, title string) int {
 	t.Helper()
 	req.Title = title
-	id := createTask(t, req, title, "", nil)
+	id := addTask(t, req, title, "", nil)
 	req.TaskID = id
 	return id
 }
@@ -74,7 +74,7 @@ func assertAgentStatusFormat(t *testing.T, stdout string) {
 			t.Fatalf("agent format must not use box chrome %q in:\n%s", bad, stdout)
 		}
 	}
-	for _, stage := range []string{"create", "done"} {
+	for _, stage := range []string{"add", "done"} {
 		unicodeBox := "│ " + stage + " │"
 		asciiBox := "| " + stage + " |"
 		if strings.Contains(plain, unicodeBox) || strings.Contains(plain, asciiBox) {

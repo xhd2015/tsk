@@ -10,7 +10,7 @@ plain + session=abc -> list --label session -> one
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "filter key", "", nil)
+	id := addTask(t, req, "filter key", "", nil)
 	idStr := fmt.Sprintf("%d", id)
 	runTskOK(t, req, "note", "add", "--id", idStr, "plain")
 	runTskOK(t, req, "note", "add", "--label", "grok", "--label", "session=abc", "--id", idStr, "sess-hit")

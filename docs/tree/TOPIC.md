@@ -1,7 +1,7 @@
 ---
 name: tsk/tree
 description: >-
-  Print the topic/task forest with tsk tree; prune to one task with --id;
+  Print the topic/task forest with tsk tree; project grouping; prune with --id;
   JSON and color/plain modes.
 ---
 
@@ -14,24 +14,27 @@ tsk tree --id ID [--json] [--color|--plain]
 
 ## Full tree
 
-- Root `.` then inbox task dirs and top-level topics (sorted).
-- Topics may nest; task dirs may nest sub-tasks.
+- Root `.` then topics, project groups, and ungrouped inbox tasks (sorted).
+- **Topic** is primary; **project** is secondary (under a topic, or at root for inbox).
+- Kind markers: topic `▣` / `#`, project `◆` / `@` (TTY vs `--plain`); tasks use `[id]-…` only.
 - Leaf label: `[id]-<stage>-<slug>  task <id>  <stage>`
+- Nested sub-tasks stay under their parent leaf.
+- Footer: `N tasks, M topics, P projects`.
 - Done tasks (and done/archived progress under `--id`) use gray + strikethrough on a TTY (`--color` forces; `--plain` disables).
 
 ## `--id`
 
-Pruned branch from root to that task. Under the task leaf:
+Pruned branch from root to that task (topic markers + optional project node).
+Under the task leaf:
 
 - `notes` — non-progress notes
 - `progress` — notes labeled progress
 
-Does not list sibling tasks outside the path to `--id`.
-
 ## `--json`
 
-Machine-readable forest (`inbox` + `topics` with nested `tasks` / `subtopics`).
-No ANSI. Task nodes may include nested `tasks` for sub-tasks.
+`inbox` (ungrouped), `inbox_projects` `[{origin,name,label,tasks}]`, `topics`
+(each topic may include `projects` buckets plus ungrouped `tasks` / `subtopics`).
+No ANSI / no glyphs.
 
 ## When to use
 

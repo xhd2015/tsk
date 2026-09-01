@@ -55,8 +55,8 @@ func dispatch(home string, args []string) error {
 		return nil
 	}
 	switch args[0] {
-	case "create":
-		return runCreate(home, args[1:])
+	case "add":
+		return runAdd(home, args[1:])
 	case "list":
 		return runList(home, args[1:])
 	case "show":
@@ -91,6 +91,10 @@ func dispatch(home string, args []string) error {
 		return runProgress(home, args[1:])
 	case "search":
 		return runSearch(home, args[1:])
+	case "project":
+		return runProject(home, args[1:])
+	case "install":
+		return runInstall(home, args[1:])
 	case "skill":
 		return runSkill(home, args[1:])
 	default:

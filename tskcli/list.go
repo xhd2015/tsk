@@ -3,6 +3,7 @@ package tskcli
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,11 +14,13 @@ import (
 func runList(home string, args []string) error {
 	setCommand(currentCtx, "list", args)
 
-	var stage, label, topicPrefix string
+	var stage, label, topicPrefix, projectKey, projectName string
 	remaining, err := lessflags.
 		String("--stage", &stage).
 		String("--label", &label).
 		String("--topic", &topicPrefix).
+		String("--project", &projectKey).
+		String("--name", &projectName).
 		Help("-h,--help", listHelp()).
 		HelpNoExit().
 		Parse(args)
@@ -29,6 +32,9 @@ func runList(home string, args []string) error {
 	}
 	if len(remaining) != 0 {
 		return fail(fmt.Errorf("tsk list: unexpected arguments"))
+	}
+	if projectKey != "" && projectName != "" {
+		return fail(fmt.Errorf("tsk list: --project conflicts with --name"))
 	}
 
 	ids, err := storage.ListTaskIDs(home)
@@ -63,6 +69,30 @@ func runList(home string, args []string) error {
 			}
 			topicStr := strings.Join(parts, "/")
 			if !strings.HasPrefix(topicStr, wantTopic) {
+				continue
+			}
+		}
+		if projectKey != "" {
+			if task.Project == nil {
+				continue
+			}
+			if task.Project.Origin != "" {
+				if task.Project.Origin != projectKey && filepath.Base(task.Project.Origin) != projectKey {
+					continue
+				}
+			} else if task.Project.Name != projectKey {
+				continue
+			}
+		}
+		if projectName != "" {
+			if task.Project == nil {
+				continue
+			}
+			if task.Project.Name == projectName {
+				// ok
+			} else if task.Project.Origin != "" && filepath.Base(task.Project.Origin) == projectName {
+				// ok
+			} else {
 				continue
 			}
 		}

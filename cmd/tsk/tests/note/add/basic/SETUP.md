@@ -8,7 +8,7 @@ create -> note add --id N hello -> note list --id N
 
 ## Steps
 
-1. `tsk create "note me"`.
+1. `tsk add "note me"`.
 2. `tsk note add --id <id> hello`.
 3. `tsk note list --id <id>`.
 
@@ -16,7 +16,7 @@ create -> note add --id N hello -> note list --id N
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "note me", "", nil)
+	id := addTask(t, req, "note me", "", nil)
 	runTskOK(t, req, "note", "add", "--id", fmt.Sprintf("%d", id), "hello")
 	req.Args = []string{"note", "list", "--id", fmt.Sprintf("%d", id)}
 	return nil

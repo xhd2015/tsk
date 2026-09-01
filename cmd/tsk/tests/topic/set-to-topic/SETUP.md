@@ -21,7 +21,7 @@ func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "move me"
 	topic := "eng/backend"
 	req.Topic = topic
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.Topic = topic
 	runTskOK(t, req, "topic", "mkdir", topic)
 	req.TaskID = id

@@ -4,7 +4,7 @@
 
 ```
 # errors: one line on stderr via single path; create success prints id + newline on stdout
-tsk advance -> stderr once; tsk create "title" -> stdout id\n + inbox side effects
+tsk advance -> stderr once; tsk add "title" -> stdout id\n + inbox side effects
 ```
 
 ## Preconditions

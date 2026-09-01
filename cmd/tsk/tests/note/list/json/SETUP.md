@@ -10,7 +10,7 @@ note add labeled -> list --json
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "json notes", "", nil)
+	id := addTask(t, req, "json notes", "", nil)
 	runTskOK(t, req, "note", "add", "--label", "grok", "--label", "session-id", "--id", fmt.Sprintf("%d", id), "sess-abc")
 	req.Args = []string{"note", "list", "--json", "--id", fmt.Sprintf("%d", id)}
 	return nil

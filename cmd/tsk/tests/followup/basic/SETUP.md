@@ -19,7 +19,7 @@ import (
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "needs followup"
 	req.Message = "please revise scope"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "summary")
 	req.TaskID = id
 	req.Args = []string{"followup", fmt.Sprintf("%d", id), req.Message}

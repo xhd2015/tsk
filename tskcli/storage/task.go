@@ -19,6 +19,14 @@ type StageHistoryEntry struct {
 	Note string `json:"note,omitempty"`
 }
 
+// ProjectRef is the optional project identity on a task.
+// Prefer Origin when the repo has a remote; Name is used only for
+// registered non-git projects (origin XOR name on disk).
+type ProjectRef struct {
+	Origin string `json:"origin,omitempty"`
+	Name   string `json:"name,omitempty"`
+}
+
 // Task is the on-disk task.json schema.
 type Task struct {
 	ID           int                 `json:"id"`
@@ -27,6 +35,8 @@ type Task struct {
 	Labels       []string            `json:"labels"`
 	TopicPath    json.RawMessage     `json:"topic_path"`
 	ParentID     int                 `json:"parent_id,omitempty"`
+	Cwd          string              `json:"cwd,omitempty"`
+	Project      *ProjectRef         `json:"project,omitempty"`
 	Stage        string              `json:"stage"`
 	CreatedAt    string              `json:"created_at"`
 	UpdatedAt    string              `json:"updated_at"`

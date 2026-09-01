@@ -2,8 +2,8 @@ github.com/mattn/go-shellwords v1.0.14 h1:yUKzIgsCnosndOASY6/enly1EAuaXeFSQ7cdyA
 github.com/mattn/go-shellwords v1.0.14/go.mod h1:EZzvwXDESEeg03EKmM+RmDnNOPKG4lLtQsUlTZDWQ8Y=
 github.com/xhd2015/agent-pro v0.0.174 h1:guHGCeqpKIN0TjpfRWsQE0UWGtjhZehf8TzOd00OSt0=
 github.com/xhd2015/agent-pro v0.0.174/go.mod h1:UhL0iE613xZM6CqscVCxD+DlNG5WjWvf1xhdiX0AbBc=
-github.com/xhd2015/dot-pkgs/go-pkgs v0.0.148 h1:EeriCRJ6gjhl7xErOYRkGOFH0TxdbE3ZiQ4VWkyEqZk=
-github.com/xhd2015/dot-pkgs/go-pkgs v0.0.148/go.mod h1:fRqLdDC4F2wHHej+4qiLbfItwpqobArDUxlHb2zP3tg=
+github.com/xhd2015/dot-pkgs/go-pkgs v0.0.162 h1:5XQrPkv06dKLS7/AIJLZWws1CsyHFvo0mt5y/LofIjo=
+github.com/xhd2015/dot-pkgs/go-pkgs v0.0.162/go.mod h1:rbA6ttLFEN1d78090+OnJo5Ghcsn8P91a0Eo2OUsxhQ=
 github.com/xhd2015/less-flags v1.0.5 h1:PZH0v8wZVdscDcSxLyRFEtybN/Xz341bWQ4JRCQqAQ0=
 github.com/xhd2015/less-flags v1.0.5/go.mod h1:HGGM7JrrfZm/RvmxBQT96jF916m9UQE8vELpejQaoIo=
 github.com/xhd2015/less-gen v0.0.19 h1:JllrPhx3HzN+f2AB6cTvW9aRCpvuODJFx7affpa0zQY=

@@ -16,7 +16,7 @@ create -> note add --label grok --label session=abc --id N text -> list
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "kv note", "", nil)
+	id := addTask(t, req, "kv note", "", nil)
 	runTskOK(t, req, "note", "add", "--label", "grok", "--label", "session=abc", "--id", fmt.Sprintf("%d", id), "backfill")
 	req.Args = []string{"note", "list", "--id", fmt.Sprintf("%d", id)}
 	return nil

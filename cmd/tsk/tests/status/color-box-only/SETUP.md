@@ -16,7 +16,7 @@ create -> … -> implementation -> tsk status --color <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "color box only"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "implementation")
 	req.TaskID = id
 	req.Args = statusArgs(id, "--color")

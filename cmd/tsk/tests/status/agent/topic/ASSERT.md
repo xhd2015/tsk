@@ -44,7 +44,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertAgentNoRectChrome(t, resp.Stdout)
 
 	// Strict leading facts; dir: literal from stdout (Option A)
-	assertAgentLeadingFactsShape(t, resp.Stdout, "topic status fact", "create", "false", "eng/backend")
+	assertAgentLeadingFactsShape(t, resp.Stdout, "topic status fact", "add", "false", "eng/backend")
 
 	idStr := fmt.Sprintf("%d", req.TaskID)
 	assertAgentFact(t, resp.Stdout, "id", idStr)

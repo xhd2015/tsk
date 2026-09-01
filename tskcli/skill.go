@@ -38,8 +38,8 @@ List prints the skill name and every available topic path.
 
 Examples:
   tsk skill --show
-  tsk skill --show create
-  tsk skill create --show
+  tsk skill --show add
+  tsk skill add --show
   tsk skill --list
   tsk skill --install --dry-run
   tsk skill --install --help

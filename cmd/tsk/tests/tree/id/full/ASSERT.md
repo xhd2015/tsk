@@ -20,14 +20,14 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	want := "" +
 		".\n" +
-		"└── kb\n" +
+		"└── # kb\n" +
 		"    └── [1]-create-report  task 1  create\n" +
 		"        ├── notes\n" +
 		"        │   └── 2026-07-09T02:00:00Z  session abc\n" +
 		"        └── progress\n" +
 		"            └── 2026-07-09T01:00:00Z  [progress]  (in-progress)  investigating\n" +
 		"\n" +
-		"1 task, 1 topic\n"
+		"1 task, 1 topic, 0 projects\n"
 	if resp.Stdout != want {
 		t.Fatalf("stdout=%q want %q", resp.Stdout, want)
 	}

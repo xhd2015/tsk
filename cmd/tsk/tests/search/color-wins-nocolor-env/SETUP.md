@@ -10,7 +10,7 @@ NO_COLOR=1 + search --color token -> ANSI present
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "env color", "", nil)
+	id := addTask(t, req, "env color", "", nil)
 	runTskOK(t, req, "note", "add", "--id", fmt.Sprintf("%d", id), "env-color-token")
 	req.ExtraEnv = []string{"NO_COLOR=1"}
 	req.Args = []string{"search", "--color", "env-color-token"}

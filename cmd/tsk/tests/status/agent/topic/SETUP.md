@@ -4,7 +4,7 @@
 
 ```
 # create --topic stores topic_path segments; agent status prints topic: eng/backend above dir:
-tsk create --topic eng/backend "topic status fact" -> tsk status --format=agent <id>
+tsk add --topic eng/backend "topic status fact" -> tsk status --format=agent <id>
 # facts: id → title → stage → terminal → topic: eng/backend → dir under topics/eng/backend/
 ```
 
@@ -17,7 +17,7 @@ tsk create --topic eng/backend "topic status fact" -> tsk status --format=agent 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "topic status fact"
 	req.Topic = "eng/backend"
-	id := createTask(t, req, req.Title, req.Topic, nil)
+	id := addTask(t, req, req.Title, req.Topic, nil)
 	req.TaskID = id
 	req.Args = agentStatusArgs(id)
 	return nil

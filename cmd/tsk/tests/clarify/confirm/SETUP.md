@@ -19,7 +19,7 @@ import (
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "clarify me"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTask(t, req, id, "")
 	advanceTask(t, req, id, "")
 	runTskOK(t, req, "clarify", "add", fmt.Sprintf("%d", id), "first question?")

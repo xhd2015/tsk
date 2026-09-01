@@ -10,7 +10,7 @@ create -> tsk done <id> -> transition error
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "unfinished", "", nil)
+	id := addTask(t, req, "unfinished", "", nil)
 	req.TaskID = id
 	req.Args = []string{"done", fmt.Sprintf("%d", id)}
 	return nil

@@ -14,7 +14,7 @@ create -> advance x2 (clarification) -> tsk status --color <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "compact width"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTask(t, req, id, "")
 	advanceTask(t, req, id, "")
 	req.TaskID = id

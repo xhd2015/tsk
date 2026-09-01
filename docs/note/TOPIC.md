@@ -10,7 +10,7 @@ Notes and progress share `notes.jsonl` on the task directory. Progress entries
 are notes that include the `progress` label.
 
 When creating a **new** task with initial context, prefer
-`tsk create --topic … --note "…" "title"` (see topic `create`). Use the
+`tsk add --topic … --note "…" "title"` (see topic `add`). Use the
 commands below on an **existing** task id.
 
 ## Notes

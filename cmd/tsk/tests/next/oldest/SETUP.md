@@ -15,8 +15,8 @@ create A -> create B -> advance both -> tsk next -> stdout "1"
 
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id1 := createTask(t, req, "older", "", nil)
-	id2 := createTask(t, req, "newer", "", nil)
+	id1 := addTask(t, req, "older", "", nil)
+	id2 := addTask(t, req, "newer", "", nil)
 	advanceTask(t, req, id1, "")
 	advanceTask(t, req, id2, "")
 	req.TaskID = id1

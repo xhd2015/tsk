@@ -22,8 +22,9 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **index/<id>** — UTF-8 single line: relative path from `TSK_HOME` to task directory; updated on create, stage rename, topic move; atomic write via temp + rename.
 - **events.jsonl** — append-only audit log; one JSON object per CLI invocation (success or failure).
 - **Task directory** — name `[id]-<stage>-<slug>/` under `inbox/` (no topic), `topics/<path>/` (topic tree), or nested under a parent task dir; contains `task.json`, `context/` (empty on create), and `clarify/` (during clarification with `batch.json`).
-- **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), optional `parent_id` (nested sub-tasks), `stage`, `created_at`, `updated_at`, `stage_history`.
-- **create --parent** — `tsk create --parent <id> <title>` nests under the parent task directory (any depth); child inherits parent `topic_path`; mutually exclusive with `--topic`.
+- **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), optional `parent_id` (nested sub-tasks), optional `cwd` (CLI recording directory), optional `project` `{id,name}` (canonical origin key + basename), `stage`, `created_at`, `updated_at`, `stage_history`.
+- **project** — `tsk project add|tree|list|which|register|unregister`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json`; auto ledger `projects-auto.json` (upsert on add; main-repo `cwd`; local-TZ `first_seen_at`/`last_seen_at`). `list` default/`--all` = union auto+registered with `tasks=`; `--auto` / `--registered` select one source; `--active` filters. `tree` = task forest. No mark import.
+- **add --parent** — `tsk add --parent <id> <title>` nests under the parent task directory (any depth); child inherits parent `topic_path`; mutually exclusive with `--topic`.
 - **Slug** — lowercase, non-letter-digit → `-`, collapse, trim, max 64 runes; immutable after create.
 - **Stage workflow** — `create → in_process → clarification → implementation → verification → summary → user_followup (loop to clarification) OR done`; `done` is terminal.
 - **Transitions** — `advance` follows allowed edges; `stage` sets stage directly (invalid jumps error); `clarify confirm -y` confirms all items and auto-advances to `implementation`; `followup` writes `context/followup-<ts>.md` and sets `user_followup`; `done` only from `summary` or `user_followup`.
@@ -42,9 +43,9 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **done** — `done <id>` marks a task done only from `summary` or `user_followup`; `done --force <id>` completes it directly from any non-terminal stage. Both update `task.json`, the task directory stage segment, the index, and stage history.
 - **delete** — `delete <id>` permanently removes the task directory and `index/<id>`; nested sub-tasks require `--recursive` (whole subtree + all descendant indexes). Stdout `deleted <id>`. No tombstone (task ids never reuse). Unlike `done`, the task does not remain in the tree.
 - **topic view** — `view [--json] <topic>` prints the topic tree (sub-topics + task nodes `[id]-<stage>-<slug>  task <id>  <stage>`, with nested sub-tasks indented). Skips `topic.json` / `notes.jsonl`. Empty topic: header + `(empty)`. Unicode `├──`/`└──`. `--json` nested `{path,aliases,tasks,subtopics}`; task nodes may include nested `tasks`; child `path` is the directory name.
-- **create --note** — `create … [--note TEXT]… <title>` appends each note to the new task’s `notes.jsonl` after create (same format as `note add`); stdout remains the id only; empty `--note` errors.
+- **add --note** — `create … [--note TEXT]… <title>` appends each note to the new task’s `notes.jsonl` after create (same format as `note add`); stdout remains the id only; empty `--note` errors.
 - **skill** — `skill --show|--install|--list` embeds Shape-3 docs (`docs/SKILL.md` + `docs/<topic>/TOPIC.md`) via `skillcmd.SingleSkill`. Actions are flags (both orders). `--list` prints `tsk` then sorted topic paths. `--help` appends Available topics. Install via `skillcmd.HandleInstall` (flags in `--install --help` only — not in SKILL.md). Root help lists `skill`.
-- **tree** — `tree [--json] [--id ID] [--color|--plain]` prints all tasks organized by topic tree (like `tree` CLI). Root `.` then inbox tasks (topic_path null) as direct leaves alongside top-level topics; each topic shows `aliases: a, b` when set. Nested sub-topics recurse via `LoadTopicTree`. Footer `N tasks, M topics` (singular/plural). Empty store: `.` + `(empty)` + `0 tasks, 0 topics`. `--json` emits `{"inbox":[...],"topics":[{path,aliases,tasks,subtopics}]}`; no ANSI. With `--id ID`, prints a pruned branch from root to one task only; under the task leaf, non-progress notes appear under a `notes` node and progress entries under a `progress` node (both omitted when empty). `--id --json` emits `{"task":{id,stage,slug,dir,topic_path},"notes":[...],"progress":[...]}` (empty arrays, not null). Terminal `done`/`archived` progress content and task leaves whose stage is `done` are gray + struck through; branch art remains unstyled. `--color` forces those ANSI sequences; `--plain` and `--json` suppress them. Footer `1 task, N topics`.
+- **tree** — `tree [--json] [--id ID] [--color|--plain]` prints topics (primary) and projects (secondary). Inbox tasks with `project` group under project nodes; ungrouped inbox stay root leaves. Markers: topic `▣`/`#`, project `◆`/`@` (TTY vs plain). Footer `N tasks, M topics, P projects`. `--json`: `inbox`, `inbox_projects`, `topics` (topics may include `projects` buckets). `--id` pruned path with markers; notes/progress under task. Done leaves gray+strike on TTY.
 - **topic alias on create/list** — `create --topic` and `list --topic` resolve aliases to the canonical slash path so `知识库` does not fork `topic_path`.
 - **next** — stdout prints id of oldest `in_process` task by `created_at`, or empty stdout when none.
 - **status** — pipeline view of a task; flags `--format=diagram|agent`, `--color` (default on TTY for diagram), `--plain` (ASCII boxes for diagram, no ANSI). **Default format** when `--format` is absent and neither `--color` nor `--plain` is present: if `TSK_STATUS_FORMAT=agent|diagram` is set use that; else if an agent host is detected (`CODEX_THREAD_ID`, `PI_CODING_AGENT`, or parent/grandparent process name via lean `agentrunner.Detect`) use `agent`; else `diagram`. Precedence (highest first): `--format` present → that value; `--color` or `--plain` present → diagram; `TSK_STATUS_FORMAT`; detect → agent; else diagram. **diagram**: hand-made compact pipeline via `tskcli/pipeline` (~40 col, 3-line boxes with labels inside mid-rows; tee borders `├`/`┤` OK on summary/user_followup); geometry: ●/create center-aligned on spine; **refine** left-rail from left mid of `user_followup` to left mid of `clarification` (no rail under done/◉); **no followup** right-rail from right mid of `summary` to right mid of `done`; **satisfied** vertical spine label under `user_followup` (no `satisfied►`); **done→◉** dead end; semantic ANSI overlay when colored (current=green bold, visited=grey, edge-into-current=orange). Exact art sealed by `status/diagram-golden` + `status/plain-golden` `expected.txt`. **agent**: strict 2-row plain-text spine (`create -> … -> done` with `name[doing]` / `(name)` / bare marks) plus back line (`refine`, `questions`, `user_followup` — no `satisfied` on art) and facts block (`id`, `title`, `stage`, `terminal`, `topic`, `dir` in that order, then after art `advance`/`next`); `title` is exact `task.json` create title (same key as `tsk show`); `topic` is always present above `dir:` — slash-joined `topic_path` segments (e.g. `eng/backend`) when set, or exactly `(not classified yet)` for inbox/null `topic_path` (differs from `tsk show`, which prints `topic: inbox`); `dir` is the absolute task directory path (from index + `TSK_HOME`; key `dir:` only — no `path`/`path_rel`); no ANSI even with `--color`; no rectangle chrome; no width cap. Invalid `--format` → exit 1, single stderr line. `context/pipeline.mmd` ignored (may remain on disk harmlessly).
@@ -66,7 +67,7 @@ notes, and a global **tree** view of all tasks organized by topic.
 
 ```
 tsk tests
-├── create/                       # tsk create
+├── add/                       # tsk add
 │   ├── no-topic/                 # inbox placement, index, task.json
 │   ├── with-topic/               # topics/<path>/ placement
 │   └── with-labels/              # --label flags, sorted labels
@@ -205,18 +206,40 @@ tsk tests
 │   ├── help/
 │   │   └── top/                  # progress -h
 │   └── show-integration/         # show prints progress: line
-├── tree/                        # tsk tree (all tasks by topic)
-│   ├── empty/                   # fresh store → root + (empty)
-│   ├── inbox/                   # inbox-only tasks at root
-│   ├── full/                    # inbox + topic + nested subtopic
-│   ├── json/                    # --json structured output
-│   ├── id/                      # --id: pruned branch + notes + progress
-│   │   ├── full/                # topic task with notes + progress
-│   │   ├── inbox/               # inbox task, no notes
-│   │   ├── json/                # --id --json
-│   │   ├── color/               # done/archived ANSI strikethrough
-│   │   └── missing/             # task not found
-│   └── help/                    # tree -h
+├── tree/                        # tsk tree (topic + project grouping)
+│   ├── empty/
+│   ├── inbox/
+│   ├── inbox-project/           # inbox grouped under @ project
+│   ├── topic-project/           # topic → @ project → task
+│   ├── full/
+│   ├── json/                    # inbox + inbox_projects + topics
+│   ├── id/
+│   │   ├── full/
+│   │   ├── inbox/
+│   │   ├── json/
+│   │   ├── color/
+│   │   └── missing/
+│   └── help/
+├── project/                     # tsk project (tasks + registry)
+│   ├── help/                    # project / add / tree / list help
+│   ├── add/                     # project add
+│   │   ├── basic/               # HTTPS origin → project.origin + cwd
+│   │   ├── with-note/           # --note after add
+│   │   ├── scp-origin/          # gitlab@host:path.git → origin key
+│   │   ├── by-name/             # --project registered non-git → name
+│   │   └── no-git/              # unregistered non-git → Error + register hint
+│   ├── register/basic/          # projects.json name + cwd
+│   ├── which/basic/             # origin/name/cwd probe
+│   ├── tree/                    # project tree (task forest)
+│   │   ├── current/
+│   │   ├── exclude-done/
+│   │   ├── all/
+│   │   └── empty/
+│   ├── list/                    # project list (all/auto/registered)
+│   │   ├── empty/
+│   │   ├── after-add/           # auto row with tasks=
+│   │   └── union-registered/    # register-only appears in default list
+│   └── show-integration/        # show prints cwd + origin
 ├── list/                         # tsk list
 │   └── filter/                   # --stage create filters ids
 ├── events/                       # events.jsonl audit
@@ -225,12 +248,12 @@ tsk tests
 │   ├── root-empty/               # no args → top help
 │   ├── root-flag/                # --help → top help
 │   ├── root-h/                   # -h → top help
-│   ├── create/                   # create --help → flags
+│   ├── add/                   # create --help → flags
 │   ├── topic/                    # topic --help → set, mkdir
 │   ├── label/                    # label list (deduped names); help → add, rm, list
 │   └── clarify/                  # clarify --help → add, list, confirm
 ├── channel/                      # tsk channel *
-│   ├── create/                   # channel create
+│   ├── add/                   # channel create
 │   │   ├── basic/                # slug id, creator-only participants.jsonl, index, empty messages.jsonl
 │   │   ├── custom-id/            # --channel-id
 │   │   ├── user-flag/            # --user carol sets creator participant
@@ -289,7 +312,7 @@ tsk tests
 │   │   └── participants-json/    # participants --json roster
 │   ├── help/                     # channel help
 │   │   ├── root/                 # channel --help lists subcommands
-│   │   ├── create/               # create --help documents --channel-id
+│   │   ├── add/               # create --help documents --channel-id
 │   │   ├── top/                  # tsk --help lists channel
 │   │   └── send/                 # send --help documents --user
 │   └── events/                   # channel events.jsonl
@@ -303,9 +326,9 @@ tsk tests
 
 | # | Leaf | Description |
 |---|------|-------------|
-| 1 | create/no-topic | `tsk create "add dark mode"` → `inbox/[1]-create-add-dark-mode/`, index, task.json |
-| 2 | create/with-topic | `tsk create --topic eng/backend "x"` → dir under `topics/eng/backend/` |
-| 3 | create/with-labels | `tsk create --label bug --label urgent "x"` → sorted labels in task.json |
+| 1 | add/no-topic | `tsk add "add dark mode"` → `inbox/[1]-create-add-dark-mode/`, index, task.json |
+| 2 | add/with-topic | `tsk add --topic eng/backend "x"` → dir under `topics/eng/backend/` |
+| 3 | add/with-labels | `tsk add --label bug --label urgent "x"` → sorted labels in task.json |
 | 4 | advance/basic | create + `tsk advance` → dir renamed to `…-in_process-…`, index updated |
 | 5 | advance/invalid/stage-jump | create + `tsk stage <id> implementation` → error, dir unchanged |
 | 6 | clarify/confirm | add 2 questions, `clarify confirm -y` → implementation, batch confirmed |
@@ -424,16 +447,16 @@ tsk tests
 | 54 | status/auto-format/force-color-blocks-auto | CODEX + `--color` → diagram (may ANSI), not agent facts |
 | 13 | show/basic | `tsk show <id>` → metadata block with title, stage, labels |
 | 14 | list/filter | `tsk list --stage create` → matching ids one per line |
-| 15 | events/append | `tsk create` → `events.jsonl` gains one audit line |
+| 15 | events/append | `tsk add` → `events.jsonl` gains one audit line |
 | 16 | help/root-empty | `tsk` (no args) → exit 0; stdout has `Usage:` + command list; stderr empty |
 | 17 | help/root-flag | `tsk --help` → exit 0; top help on stdout; stderr empty |
 | 18 | help/root-h | `tsk -h` → exit 0; stdout contains `Usage:` |
-| 19 | help/create | `tsk create --help` → create usage with `--label` and `--topic` |
+| 19 | help/add | `tsk add --help` → create usage with `--label` and `--topic` |
 | 20 | help/topic | `tsk topic --help` → lists `set`, `mkdir` subcommands |
 | 21 | help/label | `tsk label --help` → lists `add`, `rm`, `list` subcommands |
 | 22 | help/clarify | `tsk clarify --help` → lists `add`, `list`, `confirm` |
 | 23 | ux/error-once | `tsk advance` (no id) → exit 1; `task id required` on stderr exactly once |
-| 24 | ux/create-prints-id | `tsk create "hello"` → stdout `1\n`; inbox dir created; stderr empty |
+| 24 | ux/add-prints-id | `tsk add "hello"` → stdout `1\n`; inbox dir created; stderr empty |
 | 58 | channel/create/basic | `tsk channel create "Eng Alerts"` → `eng-alerts\n`, active dir, alice-only participants.jsonl, metadata-only channel.json, empty messages.jsonl |
 | 59 | channel/create/custom-id | `--channel-id my-room` → `my-room\n`, `channels/active/my-room/` |
 | 59a | channel/create/user-flag | `create --user carol` → carol-only participants.jsonl (not alice) |
@@ -475,7 +498,7 @@ tsk tests
 | 94 | channel/participant/not-found | participant add on missing channel → error |
 | 95 | channel/participant/participants-json | `participants --json` roster array |
 | 96 | channel/help/root | `channel --help` lists subcommands |
-| 97 | channel/help/create | `channel create --help` documents `--channel-id` |
+| 97 | channel/help/add | `channel create --help` documents `--channel-id` |
 | 98 | channel/help/top | `tsk --help` lists `channel` |
 | 99 | channel/help/send | `channel send --help` documents `--user` (not `--as`) |
 | 100 | channel/events/append | channel create appends `events.jsonl` with `command: channel` |
@@ -490,7 +513,7 @@ doctest vet ./tests
 doctest test ./tests
 
 # Run by command family
-doctest test ./tests/create
+doctest test ./tests/add
 doctest test ./tests/advance
 doctest test ./tests/clarify
 doctest test ./tests/topic
@@ -515,7 +538,7 @@ doctest test ./tests/channel/help
 doctest test ./tests/channel/events
 
 # Run individual leaves
-doctest test ./tests/create/no-topic
+doctest test ./tests/add/no-topic
 doctest test ./tests/advance/basic
 doctest test ./tests/advance/invalid/stage-jump
 doctest test ./tests/clarify/confirm
@@ -571,12 +594,12 @@ doctest test ./tests/events/append
 doctest test ./tests/help/root-empty
 doctest test ./tests/help/root-flag
 doctest test ./tests/help/root-h
-doctest test ./tests/help/create
+doctest test ./tests/help/add
 doctest test ./tests/help/topic
 doctest test ./tests/help/label
 doctest test ./tests/help/clarify
 doctest test ./tests/ux/error-once
-doctest test ./tests/ux/create-prints-id
+doctest test ./tests/ux/add-prints-id
 doctest test ./tests/channel/create/basic
 doctest test ./tests/channel/list/json
 doctest test ./tests/channel/send/basic

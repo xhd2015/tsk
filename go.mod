@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/mattn/go-shellwords v1.0.14
-	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.148
+	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.162
 	github.com/xhd2015/skills v0.0.30
 )
 

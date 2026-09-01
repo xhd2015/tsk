@@ -12,8 +12,8 @@ import (
 )
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	parentID := createTask(t, req, "add dark mode", "", nil)
-	runTskOK(t, req, "create", "--parent", fmt.Sprintf("%d", parentID), "child detail")
+	parentID := addTask(t, req, "add dark mode", "", nil)
+	runTskOK(t, req, "add", "--parent", fmt.Sprintf("%d", parentID), "child detail")
 	req.TaskID = parentID
 	req.Title = "add dark mode"
 	req.Args = []string{"advance", fmt.Sprintf("%d", parentID)}

@@ -14,7 +14,7 @@ create -> tsk status --color <id> -> claim, research, confirmed, questions, vert
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "edge labels"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = statusArgs(id, "--color")
 	return nil

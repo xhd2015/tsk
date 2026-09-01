@@ -14,7 +14,7 @@ create -> advance x2 -> clarification -> tsk status --format=agent <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "agent at clarification"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "clarification")
 	req.TaskID = id
 	req.Args = agentStatusArgs(id)

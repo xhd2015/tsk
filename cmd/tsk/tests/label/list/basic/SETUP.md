@@ -10,7 +10,7 @@ create --label report + note grok-session-id=… + progress -> list names
 import "fmt"
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	id := createTask(t, req, "label list", "", []string{"report"})
+	id := addTask(t, req, "label list", "", []string{"report"})
 	idStr := fmt.Sprintf("%d", id)
 	runTskOK(t, req, "note", "add", "--id", idStr, "--label", "grok-session-id=abc-1", "desc one")
 	runTskOK(t, req, "note", "add", "--id", idStr, "--label", "grok-session-id=abc-2", "desc two")

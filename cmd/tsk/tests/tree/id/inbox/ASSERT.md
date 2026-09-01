@@ -21,7 +21,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		".\n" +
 		"└── [1]-create-solo  task 1  create\n" +
 		"\n" +
-		"1 task, 0 topics\n"
+		"1 task, 0 topics, 0 projects\n"
 	if resp.Stdout != want {
 		t.Fatalf("stdout=%q want %q", resp.Stdout, want)
 	}

@@ -7,7 +7,7 @@ Usage:
   tsk <command> [arguments]
 
 Commands:
-  create     create a new task
+  add        add a new task
   list       list task ids (optional filters)
   show       show task metadata
   status     show stage pipeline for a task
@@ -25,6 +25,8 @@ Commands:
   progress   record and list progress entries on a task
   search     search task titles and note/progress/topic text
   tree       print all tasks organized by topic tree
+  project    project-scoped tasks and registry (add/tree/list/register)
+  install    install convenience CLI wrappers (e.g. pmark)
   skill      show/install embedded skill docs
 
 Run tsk <command> --help for command-specific options.
@@ -32,23 +34,23 @@ Run tsk skill --help and tsk skill --install --help for skill docs.
 `
 }
 
-func createHelp() string {
-	return `Usage: tsk create [--label LABEL]... [--topic PATH | --parent ID] [--note TEXT]... <title>
+func addHelp() string {
+	return `Usage: tsk add [--label LABEL]... [--topic PATH | --parent ID] [--note TEXT]... <title>
 
-Create a new task in inbox, under a topic path, or as a nested sub-task.
-Optional --note flags append task notes after create (same store as note add).
+Add a new task in inbox, under a topic path, or as a nested sub-task.
+Optional --note flags append task notes after add (same store as note add).
 
 Flags:
   --label LABEL   label to attach (repeatable)
   --topic PATH    topic path (e.g. eng/backend)
-  --parent ID     create as nested sub-task under this task (any depth)
-  --note TEXT     append a task note after create (repeatable)
+  --parent ID     add as nested sub-task under this task (any depth)
+  --note TEXT     append a task note after add (repeatable)
   -h, --help      show this help
 `
 }
 
 func listHelp() string {
-	return `Usage: tsk list [--stage STAGE] [--label LABEL] [--topic PREFIX]
+	return `Usage: tsk list [--stage STAGE] [--label LABEL] [--topic PREFIX] [--project KEY] [--name NAME]
 
 List task ids, optionally filtered.
 
@@ -56,7 +58,112 @@ Flags:
   --stage STAGE   filter by stage
   --label LABEL   filter by label
   --topic PREFIX  filter by topic path prefix
+  --project KEY   filter by project.origin (or registered name)
+  --name NAME     filter by project.name or origin basename / registry alias
   -h, --help      show this help
+`
+}
+
+func projectHelp() string {
+	return `Usage: tsk project <command> [arguments]
+
+Subcommands:
+  add          create a project-scoped task (non-blocking)
+  tree         list project tasks as a tree (like tsk tree)
+  list         list registered projects (projects.json)
+  which        print resolved origin/name/cwd for cwd/--dir
+  register     register a project name (and optional origin/cwd)
+  unregister   remove a registered project name
+
+  -h, --help  show this help
+`
+}
+
+func projectAddHelp() string {
+	return `Usage: tsk project add [--dir PATH] [--project NAME] [--note TEXT]... <title>
+
+Create a task tagged with git origin when available, else a registered name.
+Prints the new task id on stdout and exits (does not block).
+
+Without --project: requires git remote.origin.url, or cwd matching a registered
+project cwd. Otherwise errors (see tsk project register --help).
+
+Flags:
+  --dir PATH       resolve from PATH instead of cwd
+  --project NAME   use a registered project name (override)
+  --note TEXT      append a task note after create (repeatable)
+  -h, --help       show this help
+`
+}
+
+func projectTreeHelp() string {
+	return `Usage: tsk project tree [--name NAME | --project KEY] [--stage STAGE] [--all] [--color|--plain] [--json]
+
+List project-scoped tasks as a tree (like tsk tree).
+Default: current cwd's project, exclude done.
+
+Flags:
+  --name NAME     filter by registry name / origin basename
+  --project KEY   filter by origin key or registered name
+  --stage STAGE   filter by stage (disables default exclude-done)
+  --all           all projects (still excludes done unless --stage)
+  --color         force ANSI color and strikethrough
+  --plain         force no ANSI color or strikethrough
+  --json          emit structured JSON instead of the tree
+  -h, --help      show this help
+`
+}
+
+func projectRegistryListHelp() string {
+	return `Usage: tsk project list [--all|--auto|--registered] [--active] [--json]
+
+List projects as an aligned table (NAME ORIGIN CWD TASKS). Default and --all:
+union of projects-auto.json and projects.json (with live task counts).
+When TASKS is shown, rows are sorted by count descending. Registered-only
+names appear with tasks=0 until add.
+
+Flags:
+  --all           union of auto + registered (default)
+  --auto          projects-auto.json only
+  --registered    projects.json only
+  --active        only projects with tasks > 0
+  --json          emit JSON
+  -h, --help      show this help
+`
+}
+
+func projectRegisterHelp() string {
+	return `Usage: tsk project register --name NAME [--cwd PATH] [--origin ORIGIN]
+
+Register a unique project name in projects.json.
+cwd is stored with a ~ home prefix when under $HOME.
+If --origin is omitted, origin is taken from git in --cwd/cwd when present.
+
+Flags:
+  --name NAME       unique project name (required)
+  --cwd PATH        project directory (default: process cwd)
+  --origin ORIGIN   optional origin key or git URL
+  -h, --help        show this help
+`
+}
+
+func projectUnregisterHelp() string {
+	return `Usage: tsk project unregister <name>
+
+Remove a registered project name from projects.json.
+
+  -h, --help  show this help
+`
+}
+
+func projectWhichHelp() string {
+	return `Usage: tsk project which [--dir PATH]
+
+Print resolved origin and/or registry name and cwd for the probe directory.
+
+Flags:
+  --dir PATH    resolve from PATH instead of cwd
+  -h, --help    show this help
 `
 }
 
@@ -250,8 +357,11 @@ Flags:
 func treeHelp() string {
 	return `Usage: tsk tree [options]
 
-Print all tasks organized by topic tree, like the tree CLI.
-Inbox tasks (no topic) appear at the root level alongside top-level topics.
+Print all tasks organized by topic (primary) and project (secondary).
+Inbox tasks with a project are grouped under project nodes; ungrouped inbox
+tasks stay at the root. Under a topic, project is a secondary level.
+
+Kind markers: topic ▣ / # , project ◆ / @ (TTY vs --plain); tasks use [id]-… only.
 
 With --id, print a pruned branch from root to one task, including its
 notes and progress entries nested under the task leaf. Done task leaves and
@@ -260,7 +370,7 @@ progress entries with status done or archived are gray and struck through on a t
 Flags:
   --id ID     show only the branch for one task (with notes + progress)
   --color     force ANSI color and strikethrough
-  --plain     force no ANSI color or strikethrough
+  --plain     force no ANSI color or strikethrough (ASCII # / @ markers)
   --json      emit structured JSON instead of the tree
   -h, --help  show this help
 `

@@ -4,7 +4,7 @@
 
 ```
 # create stores title in task.json; agent status prints it in the leading facts block
-tsk create "add dark mode" -> tsk status --format=agent <id>
+tsk add "add dark mode" -> tsk status --format=agent <id>
 # facts: id → title → stage → terminal → topic → dir (exact title text; inbox topic)
 ```
 
@@ -16,7 +16,7 @@ tsk create "add dark mode" -> tsk status --format=agent <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "add dark mode"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = agentStatusArgs(id)
 	return nil

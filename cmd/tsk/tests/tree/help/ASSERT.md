@@ -25,8 +25,9 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	if !strings.Contains(resp.Stdout, "--json") {
 		t.Fatalf("stdout=%q missing --json", resp.Stdout)
 	}
-	if !strings.Contains(resp.Stdout, "root level") {
-		t.Fatalf("stdout=%q missing root level mention", resp.Stdout)
+	if !strings.Contains(resp.Stdout, "project") {
+		t.Fatalf("stdout=%q missing project grouping mention", resp.Stdout)
 	}
 }
 ```
+

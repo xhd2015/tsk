@@ -14,7 +14,7 @@ create -> tsk status --color <id> -> ▼ main flow, ► into clarification (refi
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "pipeline arrows"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = statusArgs(id, "--color")
 	return nil

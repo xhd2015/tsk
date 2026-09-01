@@ -14,7 +14,7 @@ create -> advance x2 (clarification) -> tsk status <id>  # stdout captured (pipe
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "no color pipe"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTask(t, req, id, "")
 	advanceTask(t, req, id, "")
 	req.TaskID = id

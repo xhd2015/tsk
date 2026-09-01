@@ -4,7 +4,7 @@
 
 ```
 # ExtraEnv CODEX_THREAD_ID=t1; argv --plain
-tsk create -> CODEX_THREAD_ID=t1 tsk status --plain <id> -> ASCII diagram, not agent facts
+tsk add -> CODEX_THREAD_ID=t1 tsk status --plain <id> -> ASCII diagram, not agent facts
 ```
 
 ## Steps

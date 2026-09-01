@@ -5,10 +5,12 @@
 version: 3
 ---
 tsk
+add
 channel
-create
+install
 note
 overview
+project
 topic
 tree
 workflow
@@ -34,10 +36,12 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 version: 3
 ---
 tsk
+add
 channel
-create
+install
 note
 overview
+project
 topic
 tree
 workflow

@@ -16,7 +16,7 @@ create --topic 知识库 -> list --topic 知识库 prints the id
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	runTskOK(t, req, "topic", "mkdir", "knowledge-base")
 	runTskOK(t, req, "topic", "alias", "add", "knowledge-base", "知识库")
-	id := createTask(t, req, "x", "知识库", nil)
+	id := addTask(t, req, "x", "知识库", nil)
 	req.TaskID = id
 	req.Args = []string{"list", "--topic", "知识库"}
 	return nil

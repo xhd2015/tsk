@@ -57,10 +57,17 @@ type taskJSON struct {
 	Labels       []string         `json:"labels"`
 	TopicPath    json.RawMessage  `json:"topic_path"`
 	ParentID     int              `json:"parent_id"`
+	Cwd          string           `json:"cwd"`
+	Project      *projectRefJSON  `json:"project"`
 	Stage        string           `json:"stage"`
 	CreatedAt    string           `json:"created_at"`
 	UpdatedAt    string           `json:"updated_at"`
 	StageHistory []map[string]any `json:"stage_history"`
+}
+
+type projectRefJSON struct {
+	Origin string `json:"origin"`
+	Name   string `json:"name"`
 }
 
 type clarifyBatch struct {
@@ -324,8 +331,8 @@ func parseCreatedAt(t *testing.T, raw string) time.Time {
 	return time.Time{}
 }
 
-func createArgs(title string, topic string, labels []string) []string {
-	args := []string{"create"}
+func addArgs(title string, topic string, labels []string) []string {
+	args := []string{"add"}
 	for _, label := range labels {
 		args = append(args, "--label", label)
 	}
@@ -355,10 +362,10 @@ func maxTaskID(t *testing.T, req *Request) int {
 	return maxID
 }
 
-func createTask(t *testing.T, req *Request, title string, topic string, labels []string) int {
+func addTask(t *testing.T, req *Request, title string, topic string, labels []string) int {
 	t.Helper()
 	before := maxTaskID(t, req)
-	runTskOK(t, req, createArgs(title, topic, labels)...)
+	runTskOK(t, req, addArgs(title, topic, labels)...)
 	id := maxTaskID(t, req)
 	if id <= before {
 		t.Fatalf("create task: expected new index entry after create (before=%d after=%d)", before, id)
@@ -497,8 +504,8 @@ func assertStderrContainsCount(t *testing.T, stderr, substr string, want int) {
 
 func topLevelSubcommands() []string {
 	return []string{
-		"create", "list", "show", "status", "advance", "stage", "next",
-		"label", "topic", "clarify", "followup", "done", "delete", "channel", "note", "progress", "search", "tree", "skill",
+		"add", "list", "show", "status", "advance", "stage", "next",
+		"label", "topic", "clarify", "followup", "done", "delete", "channel", "note", "progress", "search", "tree", "project", "install", "skill",
 	}
 }
 
@@ -666,9 +673,9 @@ func ensureHelpersUsed() {
 	_ = readTaskJSON
 	_ = readClarifyBatch
 	_ = parseCreatedAt
-	_ = createArgs
+	_ = addArgs
 	_ = maxTaskID
-	_ = createTask
+	_ = addTask
 	_ = advanceTask
 	_ = stageTask
 	_ = advanceTo

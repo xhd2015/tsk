@@ -8,7 +8,7 @@ create -> stage 1 implementation -> error; dir still *-create-*
 
 ## Steps
 
-1. `tsk create "add dark mode"`.
+1. `tsk add "add dark mode"`.
 2. `tsk stage 1 implementation` (invalid jump).
 
 ```go
@@ -18,7 +18,7 @@ import (
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "add dark mode"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = []string{"stage", fmt.Sprintf("%d", id), "implementation"}
 	return nil

@@ -14,7 +14,7 @@ create -> … -> done -> tsk status --format=agent <id>
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "agent at done"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceToDone(t, req, id)
 	req.TaskID = id
 	req.Args = agentStatusArgs(id)

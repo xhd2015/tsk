@@ -3,7 +3,7 @@
 **Feature**: invalid `--format` value fails with exit 1 and allowed values on stderr
 
 ```
-tsk create -> tsk status --format=nope <id> -> exit 1; stderr lists allowed formats
+tsk add -> tsk status --format=nope <id> -> exit 1; stderr lists allowed formats
 ```
 
 ## Steps
@@ -14,7 +14,7 @@ tsk create -> tsk status --format=nope <id> -> exit 1; stderr lists allowed form
 ```go
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "format invalid"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	req.TaskID = id
 	req.Args = statusArgs(id, "--format=nope")
 	return nil

@@ -12,7 +12,7 @@ import "fmt"
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "x"
 	req.Topic = "eng/backend"
-	id := createTask(t, req, req.Title, req.Topic, nil)
+	id := addTask(t, req, req.Title, req.Topic, nil)
 	req.TaskID = id
 	req.Args = []string{"delete", fmt.Sprintf("%d", id)}
 	return nil

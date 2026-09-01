@@ -43,11 +43,11 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertAgentNoRectChrome(t, resp.Stdout)
 
 	// Strict leading facts shape; dir: literal from stdout (Option A)
-	assertAgentLeadingFactsShape(t, resp.Stdout, "add dark mode", "create", "false", agentInboxTopic)
+	assertAgentLeadingFactsShape(t, resp.Stdout, "add dark mode", "add", "false", agentInboxTopic)
 
 	// Core fact values + locked order including topic before dir
-	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "create", "false")
-	assertAgentDirFact(t, resp.Stdout, req.TaskID, "create", req.Title)
+	assertAgentCoreFacts(t, resp.Stdout, req.TaskID, req.Title, "add", "false")
+	assertAgentDirFact(t, resp.Stdout, req.TaskID, "add", req.Title)
 
 	// Absolute + relative segment without hardcoding home
 	dirVal, ok := parseAgentFactValue(resp.Stdout, "dir")

@@ -19,7 +19,7 @@ import (
 
 func Setup(t *testing.T, d *session.Doctest, req *Request) error {
 	req.Title = "agent at user followup"
-	id := createTask(t, req, req.Title, "", nil)
+	id := addTask(t, req, req.Title, "", nil)
 	advanceTo(t, req, id, "summary")
 	runTskOK(t, req, "followup", fmt.Sprintf("%d", id), "please revise scope")
 	req.TaskID = id
