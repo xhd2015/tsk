@@ -261,17 +261,17 @@ func slugify(s string) string {
 	return s
 }
 
-func taskDirName(id int, stage, title string) string {
-	return fmt.Sprintf("[%d]-%s-%s", id, stage, slugify(title))
+func taskDirName(id int, title string) string {
+	return fmt.Sprintf("[%d]-%s", id, slugify(title))
 }
 
-func inboxTaskRel(id int, stage, title string) string {
-	return filepath.ToSlash(filepath.Join("inbox", taskDirName(id, stage, title)))
+func inboxTaskRel(id int, title string) string {
+	return filepath.ToSlash(filepath.Join("inbox", taskDirName(id, title)))
 }
 
-func topicTaskRel(topic string, id int, stage, title string) string {
+func topicTaskRel(topic string, id int, title string) string {
 	parts := strings.Split(topic, "/")
-	all := append(parts, taskDirName(id, stage, title))
+	all := append(parts, taskDirName(id, title))
 	return filepath.ToSlash(filepath.Join(append([]string{"topics"}, all...)...))
 }
 

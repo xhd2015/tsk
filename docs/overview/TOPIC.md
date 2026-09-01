@@ -22,7 +22,7 @@ Default root: `~/.tsk` (override with `TSK_HOME`).
 
 ## Task directory
 
-Name: `[id]-<stage>-<slug>/` under inbox, a topic, or a parent task dir.
+Name: `[id]-<slug>/` under inbox, a topic, or a parent task dir.
 
 Contains:
 
@@ -42,7 +42,8 @@ Reserved non-task children: `context`, `clarify` (and note/progress jsonl files 
 - **Topic** classifies a root-level task (`topic_path` segments).
 - **Parent task** nests a child on disk under the parent directory; child
   inherits the parent's `topic_path` (or null).
-- Stage renames change `[id]-<stage>-…` in place and cascade `index/` paths
+- Stage lives in `task.json` only; the directory basename does not change on
+  stage transitions. Topic moves still relocate the dir and cascade `index/`
   for descendants.
 
 ## Env

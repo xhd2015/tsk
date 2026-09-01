@@ -19,7 +19,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("exit %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "1")
-	taskDir := taskAbs(req, inboxTaskRel(1, "create", req.Title))
+	taskDir := taskAbs(req, inboxTaskRel(1, req.Title))
 	data, err := os.ReadFile(filepath.Join(taskDir, "notes.jsonl"))
 	if err != nil {
 		t.Fatalf("read notes.jsonl: %v", err)

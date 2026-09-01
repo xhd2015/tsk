@@ -107,7 +107,7 @@ func runProjectAdd(home string, args []string) error {
 	slug := storage.Slugify(title)
 	stage := "create"
 	now := storage.NowTimestamp(id)
-	relPath := storage.InboxRelPath(id, stage, title)
+	relPath := storage.InboxRelPath(id, title)
 	taskDir := filepath.Join(home, filepath.FromSlash(relPath))
 	if err := os.MkdirAll(filepath.Join(taskDir, "context"), 0o755); err != nil {
 		return err
@@ -713,7 +713,7 @@ func runProjectTree(home string, args []string) error {
 		groups = map[string]*projectGroup{emptyBranch.Key: emptyBranch}
 	}
 
-	color := !asJSON && !plain && (colorFlag || isStdoutTTY())
+	color := treeColorEnabled(colorFlag, plain, asJSON)
 	if asJSON {
 		out := projectTreeJSON{Projects: make([]projectTreeJSONProject, 0, len(groups))}
 		for _, g := range sortedProjectGroups(groups) {
@@ -879,6 +879,7 @@ func buildProjectTaskTree(entries []projectTaskEntry) []storage.TopicTreeTask {
 			ID:    e.Task.ID,
 			Stage: e.Task.Stage,
 			Slug:  e.Task.Slug,
+			Title: e.Task.Title,
 			Dir:   filepath.Base(e.Dir),
 		}
 		for _, cid := range children[id] {
@@ -907,11 +908,24 @@ func formatProjectTree(groups map[string]*projectGroup, color, fancy bool) strin
 	rootKids := make([]*renderNode, 0, len(ordered))
 	taskCount := 0
 	mark := projectMark(fancy)
+	idWidth := 0
+	trees := make([][]storage.TopicTreeTask, 0, len(ordered))
 	for _, g := range ordered {
 		tree := buildProjectTaskTree(g.Tasks)
+		trees = append(trees, tree)
+		if w := maxTaskIDWidth(tree); w > idWidth {
+			idWidth = w
+		}
+	}
+	for i, g := range ordered {
+		tree := trees[i]
 		taskCount += countProjectTreeTasks(tree)
-		node := &renderNode{name: mark + g.Label}
-		node.children = projectTasksToRender(tree, color)
+		short, origin := splitProjectDisplayLabel(g.Label)
+		node := &renderNode{
+			name:  mark + short,
+			extra: formatProjectOriginExtra(origin, color),
+		}
+		node.children = projectTasksToRender(tree, color, idWidth)
 		rootKids = append(rootKids, node)
 	}
 	writeRenderKids(&b, rootKids, "")
@@ -936,16 +950,16 @@ func countProjectTreeTasks(tasks []storage.TopicTreeTask) int {
 	return n
 }
 
-func projectTasksToRender(tasks []storage.TopicTreeTask, color bool) []*renderNode {
+func projectTasksToRender(tasks []storage.TopicTreeTask, color bool, idWidth int) []*renderNode {
 	out := make([]*renderNode, 0, len(tasks))
 	for _, task := range tasks {
 		node := &renderNode{
-			name:   task.Dir,
-			extra:  fmt.Sprintf("  task %d  %s", task.ID, task.Stage),
-			styled: color && isTerminalTaskStage(task.Stage),
+			name:  formatTaskLeafName(task.ID, task.Title, task.Slug, idWidth),
+			extra: formatTaskStageExtra(task.Stage, color),
+			style: taskStageStyle(task.Stage, color),
 		}
 		if len(task.Tasks) > 0 {
-			node.children = projectTasksToRender(task.Tasks, color)
+			node.children = projectTasksToRender(task.Tasks, color, idWidth)
 		}
 		out = append(out, node)
 	}

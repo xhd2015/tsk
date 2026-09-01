@@ -3,7 +3,7 @@
 **Feature**: create task without --topic lands in inbox
 
 ```
-tsk add "add dark mode" -> inbox/[1]-create-add-dark-mode/
+tsk add "add dark mode" -> inbox/[1]-add-dark-mode/
 ```
 
 ## Steps

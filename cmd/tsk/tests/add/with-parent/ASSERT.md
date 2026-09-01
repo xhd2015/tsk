@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0; stdout child id `2`.
-- Child dir nested under parent: `inbox/[1]-create-parent-work/[2]-create-child-work/`.
+- Child dir nested under parent: `inbox/[1]-parent-work/[2]-child-work/`.
 - `index/2` points at nested path; `parent_id: 2`'s task.json has `parent_id: 1`, `topic_path: null`.
 
 ## Exit Code
@@ -20,8 +20,8 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "2")
 
-	parentRel := inboxTaskRel(1, "create", "parent work")
-	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(2, "create", "child work")))
+	parentRel := inboxTaskRel(1, "parent work")
+	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(2, "child work")))
 	assertDirExists(t, taskAbs(req, childRel))
 	assertIndexEquals(t, req, 2, childRel)
 

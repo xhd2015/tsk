@@ -270,11 +270,11 @@ func assertAgentTopicFact(t *testing.T, stdout, wantTopic string) {
 
 // assertAgentDirFact checks dir: is present after topic in key order, value is
 // an absolute path, and it contains/suffix-matches the expected inbox relative
-// segment for id/stage/title (homes and temp roots vary — no full-string hardcode).
+// segment for id/title (homes and temp roots vary — no full-string hardcode).
 // For topic-placed tasks, use assertAgentDirRel instead.
-func assertAgentDirFact(t *testing.T, stdout string, id int, stage, title string) {
+func assertAgentDirFact(t *testing.T, stdout string, id int, title string) {
 	t.Helper()
-	assertAgentDirRel(t, stdout, inboxTaskRel(id, stage, title))
+	assertAgentDirRel(t, stdout, inboxTaskRel(id, title))
 }
 
 // assertAgentDirRel checks dir: after topic, absolute, matching a relative segment
@@ -311,7 +311,7 @@ func assertAgentCoreFacts(t *testing.T, stdout string, id int, title, stage, ter
 	assertAgentFact(t, stdout, "terminal", terminal)
 	assertAgentTopicFact(t, stdout, agentInboxTopic)
 	assertAgentFactKeyOrder(t, stdout, "id", "title", "stage", "terminal", "topic", "dir")
-	assertAgentDirFact(t, stdout, id, stage, title)
+	assertAgentDirFact(t, stdout, id, title)
 }
 
 func assertAgentAdvanceOK(t *testing.T, stdout, advanceTo string) {

@@ -74,7 +74,7 @@ func assertAgentStatusFormat(t *testing.T, stdout string) {
 			t.Fatalf("agent format must not use box chrome %q in:\n%s", bad, stdout)
 		}
 	}
-	for _, stage := range []string{"add", "done"} {
+	for _, stage := range []string{"create", "done"} {
 		unicodeBox := "│ " + stage + " │"
 		asciiBox := "| " + stage + " |"
 		if strings.Contains(plain, unicodeBox) || strings.Contains(plain, asciiBox) {

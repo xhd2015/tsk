@@ -1,12 +1,12 @@
 ## Expected
 
 - Exit code 0.
-- Stage `done`; directory renamed to `*-done-*`.
-- `index/<id>` updated.
+- Stage `done`; directory basename unchanged (`[id]-<slug>`).
+- `index/<id>` unchanged.
 
 ## Side Effects
 
-- Terminal stage; task dir reflects `done` segment.
+- Terminal stage written to `task.json` only.
 
 ## Exit Code
 
@@ -22,7 +22,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 
-	wantRel := inboxTaskRel(req.TaskID, "done", req.Title)
+	wantRel := inboxTaskRel(req.TaskID, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, req.TaskID, wantRel)
 	assertTaskStage(t, req, req.TaskID, "done")

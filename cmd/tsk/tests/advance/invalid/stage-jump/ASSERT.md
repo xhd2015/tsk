@@ -2,7 +2,7 @@
 
 - Exit code 1.
 - Stderr mentions invalid transition or stage.
-- Task directory remains `inbox/[1]-create-add-dark-mode/`.
+- Task directory remains `inbox/[1]-add-dark-mode/`.
 - `index/1` unchanged.
 - `task.json` stage remains `create`.
 
@@ -24,7 +24,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatal("stderr should contain error message")
 	}
 
-	wantRel := inboxTaskRel(req.TaskID, "create", req.Title)
+	wantRel := inboxTaskRel(req.TaskID, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, req.TaskID, wantRel)
 	assertTaskStage(t, req, req.TaskID, "create")

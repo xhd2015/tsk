@@ -16,7 +16,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("exit=%d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
 	assertNoANSI(t, resp.Stdout)
-	if !strings.Contains(resp.Stdout, "[1]-done-finished  task 1  done") {
+	if !strings.Contains(resp.Stdout, "[1] finished  (done)") {
 		t.Fatalf("stdout=%q missing done task leaf", resp.Stdout)
 	}
 }

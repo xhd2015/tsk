@@ -19,7 +19,7 @@ product model and agent workflows.
 
 ## Core model (agents)
 
-- Task directory name: `[id]-<stage>-<slug>` (brackets are literal on disk).
+- Task directory name: `[id]-<slug>` (brackets are literal on disk; stage is in `task.json`).
 - Placement: inbox, under a topic path, or nested under a parent task via
   `--parent`.
 - Sub-tasks: use `tsk add --parent <id>`; do not create a sibling under the
@@ -39,7 +39,9 @@ product model and agent workflows.
 4. Advance stages when doing real work; use `tsk done` (or `--force`) only
    when finishing. Use `tsk delete` to permanently remove a mistaken or
    duplicate task (`--recursive` if it has nested sub-tasks).
-5. Do not `tsk topic set` on a nested child — reparent first.
+5. Do not `tsk topic set` / `tsk update --set-topic` on a nested child — reparent first.
+6. To attach an existing task to a project or move/clear its topic: `tsk update <id> …`.
+   Remove an empty topic with `tsk topic rm <path>` (refuses if any task remains).
 
 ## Topics
 
@@ -48,7 +50,7 @@ product model and agent workflows.
 - `tree` — full tree, `--id`, JSON/color/plain
 - `project` — project-scoped tasks + registry (`add`/`tree`/`list`/`register`)
 - `install` — convenience wrappers (`tsk install pmark` → `~/.local/bin/pmark`)
-- `topic` — mkdir/set/view/alias; nested-task restrictions
+- `topic` — mkdir/set/rm/view/alias; `tsk update` for project/topic fields
 - `workflow` — stages, advance, clarify, followup, done, delete, status, next
 - `note` — notes and progress on existing tasks (see also `add --note`)
 - `channel` — Slack-like channels

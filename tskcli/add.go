@@ -92,18 +92,18 @@ func runAdd(home string, args []string) error {
 		if err != nil {
 			return fail(err)
 		}
-		relPath = storage.ChildRelPath(parentRel, id, stage, slug)
+		relPath = storage.ChildRelPath(parentRel, id, slug)
 	} else if topic != "" {
 		topicParts, err = resolveTopicInput(home, topic)
 		if err != nil {
 			return fail(err)
 		}
-		relPath = storage.TopicRelPath(storage.JoinTopicPath(topicParts), id, stage, title)
+		relPath = storage.TopicRelPath(storage.JoinTopicPath(topicParts), id, title)
 		if err := os.MkdirAll(filepath.Join(home, filepath.Dir(filepath.FromSlash(relPath))), 0o755); err != nil {
 			return err
 		}
 	} else {
-		relPath = storage.InboxRelPath(id, stage, title)
+		relPath = storage.InboxRelPath(id, title)
 	}
 
 	taskDir := filepath.Join(home, filepath.FromSlash(relPath))

@@ -25,7 +25,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertAgentFact(t, resp.Stdout, "stage", "implementation")
 	assertAgentFact(t, resp.Stdout, "terminal", "false")
 	assertAgentDoing(t, resp.Stdout, "implementation")
-	for _, stage := range []string{"add", "in_process", "clarification"} {
+	for _, stage := range []string{"create", "in_process", "clarification"} {
 		assertAgentPastBare(t, resp.Stdout, stage)
 	}
 	for _, stage := range []string{"verification", "summary", "done"} {

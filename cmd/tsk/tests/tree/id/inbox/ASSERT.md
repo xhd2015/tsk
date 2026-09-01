@@ -19,7 +19,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	want := "" +
 		".\n" +
-		"└── [1]-create-solo  task 1  create\n" +
+		"└── [1] solo  (create)\n" +
 		"\n" +
 		"1 task, 0 topics, 0 projects\n"
 	if resp.Stdout != want {

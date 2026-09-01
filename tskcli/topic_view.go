@@ -43,22 +43,20 @@ func runTopicView(home string, args []string) error {
 		enc.SetEscapeHTML(false)
 		return enc.Encode(tree)
 	}
-	fmt.Print(formatTopicView(tree))
+	fmt.Print(formatTopicView(tree, treeColorEnabled(false, false, asJSON)))
 	return nil
 }
 
 type viewNode struct {
-	name   string
-	extra  string
-	mark   string // kind prefix e.g. "▣ " / "# "; drawn dim when color
-	nested *storage.TopicTree
-	tasks  []storage.TopicTreeTask
-	kids   []viewNode // explicit children (project groups, prebuilt trees)
-	color  bool
-	styled bool
+	name  string
+	extra string
+	mark  string // kind prefix e.g. "▣ " / "# "; drawn dim when color
+	style string // ANSI SGR prefix for name+extra; empty = unstyled
+	kids  []viewNode // explicit children (project groups, tasks, subtopics)
+	color bool
 }
 
-func formatTopicView(tree storage.TopicTree) string {
+func formatTopicView(tree storage.TopicTree, color bool) string {
 	var b strings.Builder
 	b.WriteString(tree.Path)
 	if len(tree.Aliases) > 0 {
@@ -66,7 +64,8 @@ func formatTopicView(tree storage.TopicTree) string {
 		b.WriteString(strings.Join(tree.Aliases, ", "))
 	}
 	b.WriteByte('\n')
-	kids := viewChildren(&tree, false)
+	idWidth := maxTopicTreeIDWidth(&tree)
+	kids := viewChildren(&tree, color, idWidth)
 	if len(kids) == 0 {
 		b.WriteString("(empty)\n")
 		return b.String()
@@ -75,34 +74,27 @@ func formatTopicView(tree storage.TopicTree) string {
 	return b.String()
 }
 
-func viewChildren(tree *storage.TopicTree, color bool) []viewNode {
+func maxTopicTreeIDWidth(tree *storage.TopicTree) int {
+	max := maxTaskIDWidth(tree.Tasks)
+	for i := range tree.Subtopics {
+		if w := maxTopicTreeIDWidth(&tree.Subtopics[i]); w > max {
+			max = w
+		}
+	}
+	return max
+}
+
+func viewChildren(tree *storage.TopicTree, color bool, idWidth int) []viewNode {
 	out := make([]viewNode, 0, len(tree.Tasks)+len(tree.Subtopics))
 	for _, task := range tree.Tasks {
-		out = append(out, viewNode{
-			name:   task.Dir,
-			extra:  fmt.Sprintf("  task %d  %s", task.ID, task.Stage),
-			styled: color && isTerminalTaskStage(task.Stage),
-			tasks:  task.Tasks,
-			color:  color,
-		})
+		out = append(out, makeTaskViewNode(task, color, idWidth))
 	}
 	for i := range tree.Subtopics {
 		st := &tree.Subtopics[i]
-		out = append(out, viewNode{name: st.Path, nested: st, color: color})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
-	return out
-}
-
-func taskViewChildren(tasks []storage.TopicTreeTask, color bool) []viewNode {
-	out := make([]viewNode, 0, len(tasks))
-	for _, task := range tasks {
 		out = append(out, viewNode{
-			name:   task.Dir,
-			extra:  fmt.Sprintf("  task %d  %s", task.ID, task.Stage),
-			styled: color && isTerminalTaskStage(task.Stage),
-			tasks:  task.Tasks,
-			color:  color,
+			name:  st.Path,
+			kids:  viewChildren(st, color, idWidth),
+			color: color,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
@@ -118,11 +110,11 @@ func writeViewKids(b *strings.Builder, kids []viewNode, prefix string) {
 		}
 		b.WriteString(prefix)
 		b.WriteString(branch)
-		if kid.styled {
-			b.WriteString(ansiGray + ansiStrikethrough)
+		if kid.style != "" {
+			b.WriteString(kid.style)
 		}
 		if kid.mark != "" {
-			if kid.color && !kid.styled {
+			if kid.color && kid.style == "" {
 				b.WriteString(ansiGray)
 				b.WriteString(kid.mark)
 				b.WriteString(ansiReset)
@@ -132,20 +124,12 @@ func writeViewKids(b *strings.Builder, kids []viewNode, prefix string) {
 		}
 		b.WriteString(kid.name)
 		b.WriteString(kid.extra)
-		if kid.styled {
+		if kid.style != "" {
 			b.WriteString(ansiReset)
 		}
 		b.WriteByte('\n')
-		var nested []viewNode
 		if len(kid.kids) > 0 {
-			nested = kid.kids
-		} else if kid.nested != nil {
-			nested = viewChildren(kid.nested, kid.color)
-		} else if len(kid.tasks) > 0 {
-			nested = taskViewChildren(kid.tasks, kid.color)
-		}
-		if len(nested) > 0 {
-			writeViewKids(b, nested, prefix+next)
+			writeViewKids(b, kid.kids, prefix+next)
 		}
 	}
 }

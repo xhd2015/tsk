@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
@@ -37,7 +38,7 @@ func runTree(home string, args []string) error {
 	if len(remaining) != 0 {
 		return fail(fmt.Errorf("tsk tree: unexpected arguments"))
 	}
-	color := !asJSON && !plain && (colorFlag || isStdoutTTY())
+	color := treeColorEnabled(colorFlag, plain, asJSON)
 	fancy := !asJSON && !plain && isStdoutTTY()
 
 	if idStr != "" {
@@ -114,6 +115,7 @@ func runTreeID(home string, id int, asJSON, color, fancy bool) error {
 				ID:        task.ID,
 				Stage:     task.Stage,
 				Slug:      task.Slug,
+				Title:     task.Title,
 				Dir:       filepath.Base(taskDir),
 				TopicPath: topicPath,
 				Project:   task.Project,
@@ -141,6 +143,7 @@ type treeIDTask struct {
 	ID        int                 `json:"id"`
 	Stage     string              `json:"stage"`
 	Slug      string              `json:"slug"`
+	Title     string              `json:"title,omitempty"`
 	Dir       string              `json:"dir"`
 	TopicPath []string            `json:"topic_path"`
 	Project   *storage.ProjectRef `json:"project,omitempty"`
@@ -150,7 +153,7 @@ type treeIDTask struct {
 type renderNode struct {
 	name     string
 	extra    string
-	styled   bool
+	style    string // ANSI SGR prefix for name+extra; empty = unstyled
 	children []*renderNode
 }
 
@@ -158,10 +161,11 @@ func formatTreeID(home string, task storage.Task, taskDir string, topicParts []s
 	var b strings.Builder
 	b.WriteString(".\n")
 
+	idWidth := utf8.RuneCountInString(formatTaskIDBracket(task.ID))
 	taskNode := &renderNode{
-		name:   filepath.Base(taskDir),
-		extra:  fmt.Sprintf("  task %d  %s", task.ID, task.Stage),
-		styled: color && isTerminalTaskStage(task.Stage),
+		name:  formatTaskLeafName(task.ID, task.Title, task.Slug, idWidth),
+		extra: formatTaskStageExtra(task.Stage, color),
+		style: taskStageStyle(task.Stage, color),
 	}
 
 	var sections []*renderNode
@@ -185,8 +189,10 @@ func formatTreeID(home string, task storage.Task, taskDir string, topicParts []s
 	projCount := 0
 	if task.Project != nil && (task.Project.Origin != "" || task.Project.Name != "") {
 		projCount = 1
+		short, origin := projectDisplayParts(task.Project, reg)
 		leaf = &renderNode{
-			name:     projectMark(fancy) + projectDisplayLabel(task.Project, reg),
+			name:     projectMark(fancy) + short,
+			extra:    formatProjectOriginExtra(origin, color),
 			children: []*renderNode{taskNode},
 		}
 	}
@@ -244,12 +250,12 @@ func writeRenderKids(b *strings.Builder, kids []*renderNode, prefix string) {
 		}
 		b.WriteString(prefix)
 		b.WriteString(branch)
-		if kid.styled {
-			b.WriteString(ansiGray + ansiStrikethrough)
+		if kid.style != "" {
+			b.WriteString(kid.style)
 		}
 		b.WriteString(kid.name)
 		b.WriteString(kid.extra)
-		if kid.styled {
+		if kid.style != "" {
 			b.WriteString(ansiReset)
 		}
 		b.WriteByte('\n')
@@ -263,10 +269,6 @@ type treeJSONRoot struct {
 	Inbox         []storage.TopicTreeTask     `json:"inbox"`
 	InboxProjects []storage.TopicProjectGroup `json:"inbox_projects"`
 	Topics        []storage.TopicTree         `json:"topics"`
-}
-
-func isTerminalTaskStage(stage string) bool {
-	return stage == "done"
 }
 
 func topicMark(fancy bool) string {
@@ -287,7 +289,8 @@ func formatTree(inbox []storage.TopicTreeTask, forest []storage.TopicTree, reg s
 	var b strings.Builder
 	b.WriteString(".\n")
 
-	rootKids, projCount := treeRootChildren(inbox, forest, reg, color, fancy)
+	idWidth := maxTaskIDWidthForest(inbox, forest)
+	rootKids, projCount := treeRootChildren(inbox, forest, reg, color, fancy, idWidth)
 	if len(rootKids) == 0 {
 		b.WriteString("(empty)\n")
 		b.WriteString(strings.TrimPrefix(formatTreeFooter(0, 0, 0), "\n"))
@@ -322,20 +325,20 @@ func formatTreeFooter(tasks, topics, projects int) string {
 	return fmt.Sprintf("\n%d %s, %d %s, %d %s\n", tasks, taskWord, topics, topicWord, projects, projectWord)
 }
 
-func treeRootChildren(inbox []storage.TopicTreeTask, forest []storage.TopicTree, reg storage.ProjectsFile, color, fancy bool) ([]viewNode, int) {
+func treeRootChildren(inbox []storage.TopicTreeTask, forest []storage.TopicTree, reg storage.ProjectsFile, color, fancy bool, idWidth int) ([]viewNode, int) {
 	out := make([]viewNode, 0, len(inbox)+len(forest))
 	projCount := 0
 
 	ungrouped, groups := partitionTasksByProject(inbox, reg)
 	for _, g := range groups {
 		projCount++
-		out = append(out, makeProjectViewNode(g, color, fancy))
+		out = append(out, makeProjectViewNode(g, color, fancy, idWidth))
 	}
 	for _, task := range ungrouped {
-		out = append(out, makeTaskViewNode(task, color))
+		out = append(out, makeTaskViewNode(task, color, idWidth))
 	}
 	for i := range forest {
-		node, pc := makeTopicViewNode(&forest[i], reg, color, fancy)
+		node, pc := makeTopicViewNode(&forest[i], reg, color, fancy, idWidth)
 		projCount += pc
 		out = append(out, node)
 	}
@@ -343,36 +346,49 @@ func treeRootChildren(inbox []storage.TopicTreeTask, forest []storage.TopicTree,
 	return out, projCount
 }
 
-func makeTaskViewNode(task storage.TopicTreeTask, color bool) viewNode {
-	return viewNode{
-		name:   task.Dir,
-		extra:  fmt.Sprintf("  task %d  %s", task.ID, task.Stage),
-		styled: color && isTerminalTaskStage(task.Stage),
-		tasks:  task.Tasks,
-		color:  color,
+func makeTaskViewNode(task storage.TopicTreeTask, color bool, idWidth int) viewNode {
+	n := viewNode{
+		name:  formatTaskLeafName(task.ID, task.Title, task.Slug, idWidth),
+		extra: formatTaskStageExtra(task.Stage, color),
+		style: taskStageStyle(task.Stage, color),
+		color: color,
 	}
+	if len(task.Tasks) > 0 {
+		kids := make([]viewNode, 0, len(task.Tasks))
+		for _, c := range task.Tasks {
+			kids = append(kids, makeTaskViewNode(c, color, idWidth))
+		}
+		sort.Slice(kids, func(i, j int) bool { return kids[i].name < kids[j].name })
+		n.kids = kids
+	}
+	return n
 }
 
-func makeProjectViewNode(g storage.TopicProjectGroup, color, fancy bool) viewNode {
+func makeProjectViewNode(g storage.TopicProjectGroup, color, fancy bool, idWidth int) viewNode {
 	kids := make([]viewNode, 0, len(g.Tasks))
 	for _, t := range g.Tasks {
-		kids = append(kids, makeTaskViewNode(t, color))
+		kids = append(kids, makeTaskViewNode(t, color, idWidth))
 	}
 	sort.Slice(kids, func(i, j int) bool { return kids[i].name < kids[j].name })
+	short := g.Name
+	if short == "" {
+		short, _ = splitProjectDisplayLabel(g.Label)
+	}
 	return viewNode{
-		name:  g.Label,
+		name:  short,
+		extra: formatProjectOriginExtra(g.Origin, color),
 		mark:  projectMark(fancy),
 		kids:  kids,
 		color: color,
 	}
 }
 
-func makeTopicViewNode(tree *storage.TopicTree, reg storage.ProjectsFile, color, fancy bool) (viewNode, int) {
+func makeTopicViewNode(tree *storage.TopicTree, reg storage.ProjectsFile, color, fancy bool, idWidth int) (viewNode, int) {
 	extra := ""
 	if len(tree.Aliases) > 0 {
 		extra = "  aliases: " + strings.Join(tree.Aliases, ", ")
 	}
-	kids, pc := topicLevelChildren(tree, reg, color, fancy)
+	kids, pc := topicLevelChildren(tree, reg, color, fancy, idWidth)
 	return viewNode{
 		name:  tree.Path,
 		mark:  topicMark(fancy),
@@ -382,19 +398,19 @@ func makeTopicViewNode(tree *storage.TopicTree, reg storage.ProjectsFile, color,
 	}, pc
 }
 
-func topicLevelChildren(tree *storage.TopicTree, reg storage.ProjectsFile, color, fancy bool) ([]viewNode, int) {
+func topicLevelChildren(tree *storage.TopicTree, reg storage.ProjectsFile, color, fancy bool, idWidth int) ([]viewNode, int) {
 	out := make([]viewNode, 0, len(tree.Tasks)+len(tree.Subtopics))
 	projCount := 0
 	ungrouped, groups := partitionTasksByProject(tree.Tasks, reg)
 	for _, g := range groups {
 		projCount++
-		out = append(out, makeProjectViewNode(g, color, fancy))
+		out = append(out, makeProjectViewNode(g, color, fancy, idWidth))
 	}
 	for _, task := range ungrouped {
-		out = append(out, makeTaskViewNode(task, color))
+		out = append(out, makeTaskViewNode(task, color, idWidth))
 	}
 	for i := range tree.Subtopics {
-		node, pc := makeTopicViewNode(&tree.Subtopics[i], reg, color, fancy)
+		node, pc := makeTopicViewNode(&tree.Subtopics[i], reg, color, fancy, idWidth)
 		projCount += pc
 		out = append(out, node)
 	}
@@ -445,18 +461,45 @@ func partitionTasksByProject(tasks []storage.TopicTreeTask, reg storage.Projects
 	return ungrouped, groups
 }
 
-func projectDisplayLabel(ref *storage.ProjectRef, reg storage.ProjectsFile) string {
+func projectDisplayParts(ref *storage.ProjectRef, reg storage.ProjectsFile) (short, origin string) {
 	if ref == nil {
-		return ""
+		return "", ""
 	}
 	if ref.Origin != "" {
 		name := displayNameForProjectRef(ref.Origin, ref.Name, reg)
 		if name == "" {
 			name = filepath.Base(ref.Origin)
 		}
-		return name + "  " + ref.Origin
+		return name, ref.Origin
 	}
-	return ref.Name
+	return ref.Name, ""
+}
+
+func projectDisplayLabel(ref *storage.ProjectRef, reg storage.ProjectsFile) string {
+	short, origin := projectDisplayParts(ref, reg)
+	if origin == "" {
+		return short
+	}
+	return short + "  " + origin
+}
+
+// formatProjectOriginExtra returns "  <origin>", grey when color is on.
+func formatProjectOriginExtra(origin string, color bool) string {
+	if origin == "" {
+		return ""
+	}
+	if color {
+		return "  " + ansiGray + origin + ansiReset
+	}
+	return "  " + origin
+}
+
+// splitProjectDisplayLabel splits "short  origin" labels (two spaces).
+func splitProjectDisplayLabel(label string) (short, origin string) {
+	if i := strings.Index(label, "  "); i >= 0 {
+		return label[:i], label[i+2:]
+	}
+	return label, ""
 }
 
 func displayNameForProjectRef(origin, name string, reg storage.ProjectsFile) string {

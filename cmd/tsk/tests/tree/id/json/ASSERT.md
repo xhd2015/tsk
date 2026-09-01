@@ -18,7 +18,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 	assertNoANSI(t, resp.Stdout)
-	want := "{\"task\":{\"id\":1,\"stage\":\"create\",\"slug\":\"report\",\"dir\":\"[1]-create-report\",\"topic_path\":[\"kb\"]},\"notes\":[{\"ts\":\"2026-07-09T02:00:00Z\",\"text\":\"session abc\"}],\"progress\":[{\"ts\":\"2026-07-09T01:00:00Z\",\"text\":\"investigating\",\"labels\":[\"progress\"],\"status\":\"in-progress\"}]}\n"
+	want := "{\"task\":{\"id\":1,\"stage\":\"create\",\"slug\":\"report\",\"title\":\"report\",\"dir\":\"[1]-report\",\"topic_path\":[\"kb\"]},\"notes\":[{\"ts\":\"2026-07-09T02:00:00Z\",\"text\":\"session abc\"}],\"progress\":[{\"ts\":\"2026-07-09T01:00:00Z\",\"text\":\"investigating\",\"labels\":[\"progress\"],\"status\":\"in-progress\"}]}\n"
 	if resp.Stdout != want {
 		t.Fatalf("stdout=%q want %q", resp.Stdout, want)
 	}

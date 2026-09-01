@@ -22,7 +22,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, fmt.Sprintf("deleted %d", req.TaskID))
 
-	wantRel := inboxTaskRel(req.TaskID, "create", req.Title)
+	wantRel := inboxTaskRel(req.TaskID, req.Title)
 	assertFileNotExists(t, taskAbs(req, wantRel))
 	assertFileNotExists(t, filepath.Join(req.TskHome, "index", fmt.Sprintf("%d", req.TaskID)))
 

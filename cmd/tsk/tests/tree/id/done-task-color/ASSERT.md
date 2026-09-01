@@ -17,7 +17,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 
 	ansi, reset := "\x1b[90m\x1b[9m", "\x1b[0m"
-	if !strings.Contains(resp.Stdout, ansi+"[1]-done-finished  task 1  done"+reset) {
+	if !strings.Contains(resp.Stdout, ansi+"[1] finished"+reset) {
 		t.Fatalf("stdout=%q missing styled task leaf", resp.Stdout)
 	}
 	if strings.Contains(resp.Stdout, ansi+"projects") || strings.Contains(resp.Stdout, ansi+"└──") {

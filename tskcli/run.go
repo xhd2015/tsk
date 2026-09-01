@@ -93,6 +93,8 @@ func dispatch(home string, args []string) error {
 		return runSearch(home, args[1:])
 	case "project":
 		return runProject(home, args[1:])
+	case "update":
+		return runUpdate(home, args[1:])
 	case "install":
 		return runInstall(home, args[1:])
 	case "skill":

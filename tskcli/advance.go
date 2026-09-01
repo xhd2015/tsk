@@ -39,6 +39,5 @@ func runAdvance(home string, args []string) error {
 		return fail(err)
 	}
 	to, _ := storage.CanAdvance(task.Stage)
-	_, err = storage.RenameTaskDir(home, &task, taskDir, to, note)
-	return err
+	return storage.SetTaskStage(&task, taskDir, to, note)
 }

@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Task directory under `topics/eng/backend/[1]-create-x/`.
+- Task directory under `topics/eng/backend/[1]-x/`.
 - `index/1` points at the topic-relative path.
 - `task.json` has `topic_path: ["engineering","backend"]` or `["eng","backend"]` matching the topic segments.
 
@@ -28,7 +28,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 
-	wantRel := topicTaskRel(req.Topic, 1, "create", req.Title)
+	wantRel := topicTaskRel(req.Topic, 1, req.Title)
 	taskDir := taskAbs(req, wantRel)
 	assertDirExists(t, taskDir)
 	assertFileExists(t, filepath.Join(taskDir, "task.json"))

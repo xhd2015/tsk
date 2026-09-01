@@ -19,7 +19,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	if resp.ExitCode != 0 {
 		t.Fatalf("exit %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
-	wantRel := topicTaskRel("knowledge-base", 1, "create", "x")
+	wantRel := topicTaskRel("knowledge-base", 1, "x")
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, 1, wantRel)
 	task := readTaskJSON(t, taskAbs(req, wantRel))

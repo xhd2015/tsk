@@ -3,7 +3,7 @@
 **Feature**: jumping create→implementation errors without mutation
 
 ```
-create -> stage 1 implementation -> error; dir still *-create-*
+create -> stage 1 implementation -> error; dir and stage unchanged
 ```
 
 ## Steps

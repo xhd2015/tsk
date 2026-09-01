@@ -11,6 +11,7 @@ type TopicTreeTask struct {
 	ID      int             `json:"id"`
 	Stage   string          `json:"stage"`
 	Slug    string          `json:"slug"`
+	Title   string          `json:"title,omitempty"`
 	Dir     string          `json:"dir"`
 	Project *ProjectRef     `json:"project,omitempty"`
 	Tasks   []TopicTreeTask `json:"tasks,omitempty"`
@@ -89,18 +90,19 @@ func loadTopicTreeAt(dir string, parts []string) (TopicTree, error) {
 }
 
 func loadTaskTreeAt(dir, name string) (TopicTreeTask, error) {
-	id, stage, slug, ok := ParseTaskDirName(name)
+	id, slug, ok := ParseTaskDirName(name)
 	if !ok {
 		return TopicTreeTask{}, nil
 	}
 	node := TopicTreeTask{
-		ID:    id,
-		Stage: stage,
-		Slug:  slug,
-		Dir:   name,
+		ID:   id,
+		Slug: slug,
+		Dir:  name,
 	}
-	if task, err := ReadTask(dir); err == nil && task.Project != nil {
-		if task.Project.Origin != "" || task.Project.Name != "" {
+	if task, err := ReadTask(dir); err == nil {
+		node.Stage = task.Stage
+		node.Title = task.Title
+		if task.Project != nil && (task.Project.Origin != "" || task.Project.Name != "") {
 			p := *task.Project
 			node.Project = &p
 		}

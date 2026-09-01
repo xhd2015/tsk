@@ -2,8 +2,8 @@
 
 - Exit code 0; stderr empty.
 - Root `knowledge-base`.
-- Task `[1]-create-report-x` labeled `task 1  create`.
-- Nested `reports` then `[2]-create-draft-slides` labeled `task 2  create`.
+- Task `[1] report x` labeled `(create)`.
+- Nested `reports` then `[2] draft slides` labeled `(create)`.
 - Unicode tree branches; no `topic.json` / `notes.jsonl` names.
 
 ## Exit Code
@@ -21,9 +21,9 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	want := "" +
 		"knowledge-base\n" +
-		"├── [1]-create-report-x  task 1  create\n" +
+		"├── [1] report x  (create)\n" +
 		"└── reports\n" +
-		"    └── [2]-create-draft-slides  task 2  create\n"
+		"    └── [2] draft slides  (create)\n"
 	if resp.Stdout != want {
 		t.Fatalf("stdout=%q want %q", resp.Stdout, want)
 	}

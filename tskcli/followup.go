@@ -57,6 +57,5 @@ func runFollowup(home string, args []string) error {
 		return err
 	}
 
-	_, err = storage.RenameTaskDir(home, &task, taskDir, "user_followup", "")
-	return err
+	return storage.SetTaskStage(&task, taskDir, "user_followup", "")
 }

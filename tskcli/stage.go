@@ -39,6 +39,5 @@ func runStage(home string, args []string) error {
 	if err := storage.ValidateStageTransition(task.Stage, target); err != nil {
 		return fail(err)
 	}
-	_, err = storage.RenameTaskDir(home, &task, taskDir, target, note)
-	return err
+	return storage.SetTaskStage(&task, taskDir, target, note)
 }

@@ -25,11 +25,11 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	if perr != nil {
 		t.Fatalf("parent id: %v", perr)
 	}
-	parentRel := inboxTaskRel(parentID, "create", "parent work")
+	parentRel := inboxTaskRel(parentID, "parent work")
 	assertDirExists(t, taskAbs(req, parentRel))
 	assertIndexEquals(t, req, parentID, parentRel)
 
-	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(req.TaskID, "create", req.Title)))
+	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(req.TaskID, req.Title)))
 	assertFileNotExists(t, taskAbs(req, childRel))
 	assertFileNotExists(t, filepath.Join(req.TskHome, "index", fmt.Sprintf("%d", req.TaskID)))
 }

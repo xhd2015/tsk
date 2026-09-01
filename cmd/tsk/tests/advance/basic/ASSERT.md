@@ -1,14 +1,13 @@
 ## Expected
 
 - Exit code 0.
-- Old dir `inbox/[1]-create-add-dark-mode/` no longer exists.
-- New dir `inbox/[1]-in_process-add-dark-mode/` exists.
-- `index/1` updated to `inbox/[1]-in_process-add-dark-mode`.
+- Directory basename stays `inbox/[1]-add-dark-mode/` (no rename on advance).
+- `index/1` still points at that path.
 - `task.json` stage is `in_process` with `stage_history` entry `create` → `in_process`.
 
 ## Side Effects
 
-- Directory rename under inbox; index rewrite.
+- Stage and stage_history updated in `task.json` only.
 
 ## Exit Code
 
@@ -24,11 +23,9 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 
-	oldRel := inboxTaskRel(req.TaskID, "create", req.Title)
-	newRel := inboxTaskRel(req.TaskID, "in_process", req.Title)
-	assertFileNotExists(t, taskAbs(req, oldRel))
-	assertDirExists(t, taskAbs(req, newRel))
-	assertIndexEquals(t, req, req.TaskID, newRel)
+	wantRel := inboxTaskRel(req.TaskID, req.Title)
+	assertDirExists(t, taskAbs(req, wantRel))
+	assertIndexEquals(t, req, req.TaskID, wantRel)
 	assertTaskStage(t, req, req.TaskID, "in_process")
 
 	task := readTaskJSON(t, findTaskDirByID(t, req, req.TaskID))

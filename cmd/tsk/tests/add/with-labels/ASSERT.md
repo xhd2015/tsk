@@ -5,7 +5,7 @@
 
 ## Side Effects
 
-- Task created in inbox at `inbox/[1]-create-x/`.
+- Task created in inbox at `inbox/[1]-x/`.
 
 ## Exit Code
 
@@ -21,7 +21,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 
-	wantRel := inboxTaskRel(1, "create", req.Title)
+	wantRel := inboxTaskRel(1, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertLabelsSorted(t, req, 1, []string{"bug", "urgent"})
 }

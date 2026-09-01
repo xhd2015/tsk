@@ -1,9 +1,9 @@
 # Scenario
 
-**Feature**: advance from create renames directory and updates index
+**Feature**: advance from create updates stage in task.json (dirname unchanged)
 
 ```
-create "add dark mode" -> advance 1 -> inbox/[1]-in_process-add-dark-mode/
+create "add dark mode" -> advance 1 -> stage in_process; dir stays inbox/[1]-add-dark-mode/
 ```
 
 ## Steps

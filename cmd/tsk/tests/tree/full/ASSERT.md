@@ -21,12 +21,12 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	want := "" +
 		".\n" +
-		"├── [1]-create-alpha  task 1  create\n" +
-		"├── [2]-create-beta  task 2  create\n" +
+		"├── [1] alpha  (create)\n" +
+		"├── [2] beta  (create)\n" +
 		"└── # knowledge-base  aliases: 知识库\n" +
-		"    ├── [3]-create-report  task 3  create\n" +
+		"    ├── [3] report  (create)\n" +
 		"    └── # reports\n" +
-		"        └── [4]-create-draft  task 4  create\n" +
+		"        └── [4] draft  (create)\n" +
 		"\n" +
 		"4 tasks, 1 topic, 0 projects\n"
 	if resp.Stdout != want {

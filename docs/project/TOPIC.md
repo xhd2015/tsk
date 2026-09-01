@@ -65,6 +65,14 @@ When `TASKS` is shown, rows sort by count descending (tie-break name, origin).
 
 Default inbox. Use `tsk done` / `delete` / `show` / `note`.
 
+To attach or clear project on an **existing** task (without creating a new one):
+
+```text
+tsk update <id> --set-project REF    # name, origin, or unique basename
+tsk update <id> --clear-project
+```
+
+
 ## Tree
 
 Like `tsk tree`. Default: current project, exclude `done`.

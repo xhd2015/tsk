@@ -16,6 +16,7 @@ Commands:
   next       print oldest in_process task id
   label      add, remove, or list labels
   topic      set topic path or mkdir topic tree
+  update     update task project and/or topic
   clarify    manage clarification questions
   followup   add followup context from summary
   done       mark task done (use --force to bypass the workflow stage requirement)
@@ -107,8 +108,8 @@ Flags:
   --project KEY   filter by origin key or registered name
   --stage STAGE   filter by stage (disables default exclude-done)
   --all           all projects (still excludes done unless --stage)
-  --color         force ANSI color and strikethrough
-  --plain         force no ANSI color or strikethrough
+  --color         force ANSI stage styling (no trailing stage text)
+  --plain         force no ANSI; show  (stage); ASCII markers
   --json          emit structured JSON instead of the tree
   -h, --help      show this help
 `
@@ -235,6 +236,7 @@ func topicHelp() string {
 Subcommands:
   set <id> <path|--inbox>   move task to topic path or inbox
   mkdir <path>              create topic directory tree
+  rm <path>                 remove a topic directory (no tasks/subtopics)
   where <topic>             print absolute topic directory
   info <topic>              show topic metadata and counts
   note <topic> <text...>    append a timestamped topic note
@@ -243,6 +245,32 @@ Subcommands:
   alias add <topic> <alias> add an alias (creates topic.json)
 
   -h, --help                show this help
+`
+}
+
+func topicRmHelp() string {
+	return `Usage: tsk topic rm <path>
+
+Remove a topic directory. Refuses if any task is classified at or under
+this path, or if subtopic directories remain. No force flag.
+
+  <path>      topic path or alias
+  -h, --help  show this help
+`
+}
+
+func updateHelp() string {
+	return `Usage: tsk update <id> [--set-project REF | --clear-project]
+                   [--set-topic PATH | --clear-topic]
+
+Update an existing task's project and/or topic.
+
+Flags:
+  --set-project REF   set project (registered name, origin, or unique basename)
+  --clear-project     remove project from the task
+  --set-topic PATH    move task to topic path (same as topic set)
+  --clear-topic       move task to inbox (clear topic_path)
+  -h, --help          show this help
 `
 }
 
@@ -361,16 +389,18 @@ Print all tasks organized by topic (primary) and project (secondary).
 Inbox tasks with a project are grouped under project nodes; ungrouped inbox
 tasks stay at the root. Under a topic, project is a secondary level.
 
-Kind markers: topic ▣ / # , project ◆ / @ (TTY vs --plain); tasks use [id]-… only.
+Kind markers: topic ▣ / # , project ◆ / @ (TTY vs --plain).
+Task leaves: padded [id] + title (512-rune cap). On color, stage is ANSI only
+(create plain; mid-pipeline tinted; done gray+strike); without color,  (stage).
 
 With --id, print a pruned branch from root to one task, including its
-notes and progress entries nested under the task leaf. Done task leaves and
-progress entries with status done or archived are gray and struck through on a terminal.
+notes and progress entries nested under the task leaf. Done/archived progress
+entries are gray and struck through when color is on.
 
 Flags:
   --id ID     show only the branch for one task (with notes + progress)
-  --color     force ANSI color and strikethrough
-  --plain     force no ANSI color or strikethrough (ASCII # / @ markers)
+  --color     force ANSI color (ignores TTY and NO_COLOR)
+  --plain     force no ANSI; ASCII # / @ markers; show  (stage)
   --json      emit structured JSON instead of the tree
   -h, --help  show this help
 `

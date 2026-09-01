@@ -81,26 +81,26 @@ func Slugify(s string) string {
 	return s
 }
 
-// TaskDirName returns the directory name for a task: [id]-<stage>-<slug>.
-func TaskDirName(id int, stage, slug string) string {
-	return fmt.Sprintf("[%d]-%s-%s", id, stage, slug)
+// TaskDirName returns the directory name for a task: [id]-<slug>.
+func TaskDirName(id int, slug string) string {
+	return fmt.Sprintf("[%d]-%s", id, slug)
 }
 
 // InboxRelPath returns the inbox-relative path for a top-level task directory.
-func InboxRelPath(id int, stage, title string) string {
-	return filepath.ToSlash(filepath.Join("inbox", TaskDirName(id, stage, Slugify(title))))
+func InboxRelPath(id int, title string) string {
+	return filepath.ToSlash(filepath.Join("inbox", TaskDirName(id, Slugify(title))))
 }
 
 // TopicRelPath returns the topic-relative path for a top-level task directory.
-func TopicRelPath(topic string, id int, stage, title string) string {
+func TopicRelPath(topic string, id int, title string) string {
 	parts := strings.Split(topic, "/")
-	all := append(parts, TaskDirName(id, stage, Slugify(title)))
+	all := append(parts, TaskDirName(id, Slugify(title)))
 	return filepath.ToSlash(filepath.Join(append([]string{"topics"}, all...)...))
 }
 
 // ChildRelPath returns the relative path for a nested sub-task under parentRel.
-func ChildRelPath(parentRel string, id int, stage, slug string) string {
-	return filepath.ToSlash(filepath.Join(parentRel, TaskDirName(id, stage, slug)))
+func ChildRelPath(parentRel string, id int, slug string) string {
+	return filepath.ToSlash(filepath.Join(parentRel, TaskDirName(id, slug)))
 }
 
 // RelFromHome returns the slash-separated path of abs relative to home.
@@ -168,8 +168,8 @@ func WalkTaskDirs(taskDir string, fn func(abs string, task Task) error) error {
 }
 
 // TopLevelTaskRel builds inbox/ or topics/… relative path for a root-level task.
-func TopLevelTaskRel(topicParts []string, id int, stage, slug string) string {
-	name := TaskDirName(id, stage, slug)
+func TopLevelTaskRel(topicParts []string, id int, slug string) string {
+	name := TaskDirName(id, slug)
 	if len(topicParts) == 0 {
 		return filepath.ToSlash(filepath.Join("inbox", name))
 	}
@@ -262,28 +262,9 @@ func WriteTask(taskDir string, task Task) error {
 	return nil
 }
 
-// RenameTaskDir renames a task directory in place (path-preserving) and
-// cascades index updates for nested descendants.
-func RenameTaskDir(home string, task *Task, oldDir, newStage string, note string) (string, error) {
-	oldRel, err := RelFromHome(home, oldDir)
-	if err != nil {
-		return "", fmt.Errorf("rel task dir: %w", err)
-	}
-	parentRel := filepath.ToSlash(filepath.Dir(oldRel))
-	newName := TaskDirName(task.ID, newStage, task.Slug)
-	var newRel string
-	if parentRel == "." || parentRel == "" {
-		newRel = newName
-	} else {
-		newRel = filepath.ToSlash(filepath.Join(parentRel, newName))
-	}
-	newAbs := filepath.Join(home, filepath.FromSlash(newRel))
-	if err := os.MkdirAll(filepath.Dir(newAbs), 0o755); err != nil {
-		return "", fmt.Errorf("mkdir parent: %w", err)
-	}
-	if err := os.Rename(oldDir, newAbs); err != nil {
-		return "", fmt.Errorf("rename task dir: %w", err)
-	}
+// SetTaskStage updates task.json stage and stage_history in place.
+// Directory basename is [id]-<slug> and does not change with stage.
+func SetTaskStage(task *Task, taskDir, newStage, note string) error {
 	now := NowTimestamp(task.ID)
 	from := task.Stage
 	task.Stage = newStage
@@ -293,13 +274,7 @@ func RenameTaskDir(home string, task *Task, oldDir, newStage string, note string
 		entry.Note = note
 	}
 	task.StageHistory = append(task.StageHistory, entry)
-	if err := WriteTask(newAbs, *task); err != nil {
-		return "", err
-	}
-	if err := RewriteIndexPrefix(home, oldRel, newRel); err != nil {
-		return "", err
-	}
-	return newAbs, nil
+	return WriteTask(taskDir, *task)
 }
 
 // MoveTaskDir moves a root-level task directory (and nested children) to a new
@@ -312,7 +287,7 @@ func MoveTaskDir(home string, task *Task, oldDir string, topicParts []string) (s
 	if err != nil {
 		return "", fmt.Errorf("rel task dir: %w", err)
 	}
-	newRel := TopLevelTaskRel(topicParts, task.ID, task.Stage, task.Slug)
+	newRel := TopLevelTaskRel(topicParts, task.ID, task.Slug)
 	newAbs := filepath.Join(home, filepath.FromSlash(newRel))
 	if err := os.MkdirAll(filepath.Dir(newAbs), 0o755); err != nil {
 		return "", fmt.Errorf("mkdir parent: %w", err)
@@ -365,7 +340,7 @@ func DeleteTask(home string, id int, recursive bool) error {
 		if !ent.IsDir() || !IsTaskDirName(ent.Name()) {
 			continue
 		}
-		cid, _, _, ok := ParseTaskDirName(ent.Name())
+		cid, _, ok := ParseTaskDirName(ent.Name())
 		if !ok {
 			continue
 		}

@@ -20,12 +20,12 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, fmt.Sprintf("deleted %d", req.TaskID))
 
-	parentRel := inboxTaskRel(req.TaskID, "create", req.Title)
+	parentRel := inboxTaskRel(req.TaskID, req.Title)
 	assertFileNotExists(t, taskAbs(req, parentRel))
 	assertFileNotExists(t, filepath.Join(req.TskHome, "index", fmt.Sprintf("%d", req.TaskID)))
 
 	childID := 2
-	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(childID, "create", "child work")))
+	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(childID, "child work")))
 	assertFileNotExists(t, taskAbs(req, childRel))
 	assertFileNotExists(t, filepath.Join(req.TskHome, "index", fmt.Sprintf("%d", childID)))
 }

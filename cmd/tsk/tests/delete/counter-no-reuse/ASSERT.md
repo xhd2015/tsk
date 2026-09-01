@@ -17,7 +17,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "2")
 
-	wantRel := inboxTaskRel(2, "create", req.Title)
+	wantRel := inboxTaskRel(2, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, 2, wantRel)
 	assertFileNotExists(t, filepath.Join(req.TskHome, "index", "1"))

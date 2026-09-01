@@ -139,6 +139,5 @@ func runClarifyConfirm(home string, args []string) error {
 		return err
 	}
 
-	_, err = storage.RenameTaskDir(home, &task, taskDir, "implementation", "")
-	return err
+	return storage.SetTaskStage(&task, taskDir, "implementation", "")
 }

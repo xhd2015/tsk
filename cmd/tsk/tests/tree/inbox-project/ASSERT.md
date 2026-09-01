@@ -16,9 +16,9 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	want := "" +
 		".\n" +
-		"├── [2]-create-solo  task 2  create\n" +
+		"├── [2] solo  (create)\n" +
 		"└── @ dot-pkgs  github.com/xhd2015/dot-pkgs\n" +
-		"    └── [1]-create-p  task 1  create\n" +
+		"    └── [1] p  (create)\n" +
 		"\n" +
 		"2 tasks, 0 topics, 1 project\n"
 	if resp.Stdout != want {

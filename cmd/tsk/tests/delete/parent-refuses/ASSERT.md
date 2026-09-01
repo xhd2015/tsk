@@ -22,12 +22,12 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr=%q missing nested/--recursive", resp.Stderr)
 	}
 
-	parentRel := inboxTaskRel(req.TaskID, "create", req.Title)
+	parentRel := inboxTaskRel(req.TaskID, req.Title)
 	assertDirExists(t, taskAbs(req, parentRel))
 	assertIndexEquals(t, req, req.TaskID, parentRel)
 
 	childID := 2
-	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(childID, "create", "child work")))
+	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(childID, "child work")))
 	assertDirExists(t, taskAbs(req, childRel))
 	assertIndexEquals(t, req, childID, childRel)
 }

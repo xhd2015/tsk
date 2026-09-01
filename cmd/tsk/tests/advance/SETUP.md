@@ -3,7 +3,7 @@
 **Feature**: `tsk advance` moves task along allowed workflow edges
 
 ```
-# advance renames <id>-<old-stage>-<slug>/ to <id>-<new-stage>-<slug>/ and updates index
+# advance updates task.json stage only; dirname [id]-<slug> stays put
 tsk advance <id> [--note N] -> stage transition create→in_process→...
 ```
 

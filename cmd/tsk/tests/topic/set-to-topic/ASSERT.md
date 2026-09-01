@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Task directory moved from inbox to `topics/eng/backend/[1]-create-move-me/`.
+- Task directory moved from inbox to `topics/eng/backend/[1]-move-me/`.
 - `index/1` updated to topic-relative path.
 - `task.json` `topic_path` matches `["eng","backend"]`.
 
@@ -27,10 +27,10 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 
-	oldRel := inboxTaskRel(req.TaskID, "create", req.Title)
+	oldRel := inboxTaskRel(req.TaskID, req.Title)
 	assertFileNotExists(t, taskAbs(req, oldRel))
 
-	wantRel := topicTaskRel(req.Topic, req.TaskID, "create", req.Title)
+	wantRel := topicTaskRel(req.Topic, req.TaskID, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, req.TaskID, wantRel)
 	assertTopicPathEquals(t, req, req.TaskID, strings.Split(req.Topic, "/"))

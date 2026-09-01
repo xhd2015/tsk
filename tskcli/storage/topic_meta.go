@@ -23,17 +23,6 @@ type TopicMeta struct {
 	UpdatedAt string   `json:"updated_at,omitempty"`
 }
 
-var taskDirStages = map[string]struct{}{
-	"create":         {},
-	"in_process":     {},
-	"clarification":  {},
-	"implementation": {},
-	"verification":   {},
-	"summary":        {},
-	"user_followup":  {},
-	"done":           {},
-}
-
 // SplitTopicPath splits a slash-separated topic ref into segments.
 func SplitTopicPath(path string) []string {
 	path = strings.Trim(path, "/")
@@ -63,42 +52,34 @@ func TopicDirExists(home string, parts []string) bool {
 	return err == nil && st.IsDir()
 }
 
-// IsTaskDirName reports whether name looks like [id]-<stage>-<slug>.
+// IsTaskDirName reports whether name looks like [id]-<slug>.
 func IsTaskDirName(name string) bool {
-	_, _, _, ok := ParseTaskDirName(name)
+	_, _, ok := ParseTaskDirName(name)
 	return ok
 }
 
-// ParseTaskDirName splits [id]-<stage>-<slug>. ok is false if the name is not a task dir.
-func ParseTaskDirName(name string) (id int, stage, slug string, ok bool) {
+// ParseTaskDirName splits [id]-<slug>. ok is false if the name is not a task dir.
+func ParseTaskDirName(name string) (id int, slug string, ok bool) {
 	if !strings.HasPrefix(name, "[") {
-		return 0, "", "", false
+		return 0, "", false
 	}
 	closeIdx := strings.IndexByte(name, ']')
 	if closeIdx < 2 {
-		return 0, "", "", false
+		return 0, "", false
 	}
 	id, err := strconv.Atoi(name[1:closeIdx])
 	if err != nil || id <= 0 {
-		return 0, "", "", false
+		return 0, "", false
 	}
 	rest := name[closeIdx+1:]
 	if !strings.HasPrefix(rest, "-") {
-		return 0, "", "", false
+		return 0, "", false
 	}
-	rest = rest[1:]
-	parts := strings.SplitN(rest, "-", 2)
-	if len(parts) < 2 {
-		return 0, "", "", false
-	}
-	stage, slug = parts[0], parts[1]
-	if _, known := taskDirStages[stage]; !known {
-		return 0, "", "", false
-	}
+	slug = rest[1:]
 	if slug == "" {
-		return 0, "", "", false
+		return 0, "", false
 	}
-	return id, stage, slug, true
+	return id, slug, true
 }
 
 // DefaultTopicMeta returns metadata for a directory that has no topic.json.
@@ -220,6 +201,15 @@ func ListTopicChildNames(topicDir string) ([]string, error) {
 
 // CountTasksAtTopic counts index tasks whose topic_path equals parts exactly.
 func CountTasksAtTopic(home string, parts []string) (int, error) {
+	return countTasksForTopic(home, parts, false)
+}
+
+// CountTasksUnderTopic counts tasks whose topic_path equals parts or is under it.
+func CountTasksUnderTopic(home string, parts []string) (int, error) {
+	return countTasksForTopic(home, parts, true)
+}
+
+func countTasksForTopic(home string, parts []string, includeDescendants bool) (int, error) {
 	ids, err := ListTaskIDs(home)
 	if err != nil {
 		return 0, err
@@ -234,11 +224,28 @@ func CountTasksAtTopic(home string, parts []string) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if topicPartsEqual(got, parts) {
+		if includeDescendants {
+			if topicPathHasPrefix(got, parts) {
+				n++
+			}
+		} else if topicPartsEqual(got, parts) {
 			n++
 		}
 	}
 	return n, nil
+}
+
+// topicPathHasPrefix reports whether path equals prefix or is under it.
+func topicPathHasPrefix(path, prefix []string) bool {
+	if len(prefix) == 0 || len(path) < len(prefix) {
+		return false
+	}
+	for i := range prefix {
+		if path[i] != prefix[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func topicPartsEqual(a, b []string) bool {

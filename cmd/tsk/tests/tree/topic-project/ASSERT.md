@@ -17,7 +17,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		".\n" +
 		"└── # eng\n" +
 		"    └── @ wrk  github.com/xhd2015/wrk\n" +
-		"        └── [1]-create-report  task 1  create\n" +
+		"        └── [1] report  (create)\n" +
 		"\n" +
 		"1 task, 1 topic, 1 project\n"
 	if resp.Stdout != want {

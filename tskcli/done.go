@@ -41,6 +41,5 @@ func runDone(home string, args []string) error {
 	if task.Stage != "summary" && task.Stage != "user_followup" && !force {
 		return fail(fmt.Errorf("invalid transition: done only from summary or user_followup"))
 	}
-	_, err = storage.RenameTaskDir(home, &task, taskDir, "done", "")
-	return err
+	return storage.SetTaskStage(&task, taskDir, "done", "")
 }

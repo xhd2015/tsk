@@ -22,7 +22,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "1")
 
-	wantRel := topicTaskRel("agent-pro", 1, "create", req.Title)
+	wantRel := topicTaskRel("agent-pro", 1, req.Title)
 	taskDir := taskAbs(req, wantRel)
 	assertDirExists(t, taskDir)
 	assertIndexEquals(t, req, 1, wantRel)

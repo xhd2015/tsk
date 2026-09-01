@@ -23,7 +23,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "1")
 
-	wantRel := inboxTaskRel(1, "create", req.Title)
+	wantRel := inboxTaskRel(1, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, 1, wantRel)
 	assertTopicPathNull(t, req, 1)

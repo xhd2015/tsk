@@ -44,7 +44,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertAgentNoRectChrome(t, resp.Stdout)
 
 	// Strict leading facts; dir: literal from stdout (Option A)
-	assertAgentLeadingFactsShape(t, resp.Stdout, "topic status fact", "add", "false", "eng/backend")
+	assertAgentLeadingFactsShape(t, resp.Stdout, "topic status fact", "create", "false", "eng/backend")
 
 	idStr := fmt.Sprintf("%d", req.TaskID)
 	assertAgentFact(t, resp.Stdout, "id", idStr)
@@ -54,7 +54,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertAgentTopicFact(t, resp.Stdout, "eng/backend")
 	assertAgentFactKeyOrder(t, resp.Stdout, "id", "title", "stage", "terminal", "topic", "dir")
 
-	wantRel := topicTaskRel(req.Topic, req.TaskID, "create", req.Title)
+	wantRel := topicTaskRel(req.Topic, req.TaskID, req.Title)
 	assertAgentDirRel(t, resp.Stdout, wantRel)
 
 	dirVal, ok := parseAgentFactValue(resp.Stdout, "dir")

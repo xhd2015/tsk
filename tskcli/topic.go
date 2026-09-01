@@ -1,11 +1,13 @@
 package tskcli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
@@ -21,6 +23,8 @@ func runTopic(home string, args []string) error {
 		return runTopicSet(home, args[1:])
 	case "mkdir":
 		return runTopicMkdir(home, args[1:])
+	case "rm":
+		return runTopicRm(home, args[1:])
 	case "where":
 		return runTopicWhere(home, args[1:])
 	case "info":
@@ -117,6 +121,47 @@ func runTopicMkdir(home string, args []string) error {
 	}
 	dir := filepath.Join(home, "topics", filepath.Join(parts...))
 	return os.MkdirAll(dir, 0o755)
+}
+
+func runTopicRm(home string, args []string) error {
+	setCommand(currentCtx, "topic", append([]string{"rm"}, args...))
+
+	remaining, err := lessflags.
+		Help("-h,--help", topicRmHelp()).
+		HelpNoExit().
+		Parse(args)
+	if err != nil {
+		if errors.Is(err, lessflags.ErrHelp) {
+			return nil
+		}
+		return fail(err)
+	}
+	if len(remaining) != 1 {
+		return fail(fmt.Errorf("tsk topic rm: path required"))
+	}
+	parts, abs, err := requireTopicDir(home, remaining[0])
+	if err != nil {
+		return topicErr("%s", err.Error())
+	}
+	n, err := storage.CountTasksUnderTopic(home, parts)
+	if err != nil {
+		return fail(err)
+	}
+	if n > 0 {
+		return topicErr("tsk topic rm: topic %s still has %d task(s)", storage.JoinTopicPath(parts), n)
+	}
+	subs, err := storage.ListTopicChildNames(abs)
+	if err != nil {
+		return fail(err)
+	}
+	if len(subs) > 0 {
+		return topicErr("tsk topic rm: topic %s has subtopics %v", storage.JoinTopicPath(parts), subs)
+	}
+	if err := os.RemoveAll(abs); err != nil {
+		return fail(fmt.Errorf("tsk topic rm: %w", err))
+	}
+	fmt.Printf("removed topic %s\n", storage.JoinTopicPath(parts))
+	return nil
 }
 
 func topicPartsEqual(a, b []string) bool {

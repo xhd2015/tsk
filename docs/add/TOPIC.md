@@ -18,7 +18,7 @@ Success prints the new task id on stdout. Each `--note` appends a task note
 
 | Flags | Result |
 |-------|--------|
-| (none) | `inbox/[id]-create-<slug>/`, `topic_path: null` |
+| (none) | `inbox/[id]-<slug>/`, `topic_path: null`, stage `create` |
 | `--topic PATH` | Under `topics/<path>/…`; resolves aliases to canonical path |
 | `--parent ID` | Nested under that task’s directory; inherits parent `topic_path`; sets `parent_id` |
 

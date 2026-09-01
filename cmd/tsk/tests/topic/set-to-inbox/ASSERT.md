@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit code 0.
-- Task directory under `inbox/[1]-create-return-home/`.
+- Task directory under `inbox/[1]-return-home/`.
 - `topic_path` is null in `task.json`.
 - `index/1` points at inbox path.
 
@@ -23,10 +23,10 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("stderr should be empty, got %q", resp.Stderr)
 	}
 
-	oldRel := topicTaskRel(req.Topic, req.TaskID, "create", req.Title)
+	oldRel := topicTaskRel(req.Topic, req.TaskID, req.Title)
 	assertFileNotExists(t, taskAbs(req, oldRel))
 
-	wantRel := inboxTaskRel(req.TaskID, "create", req.Title)
+	wantRel := inboxTaskRel(req.TaskID, req.Title)
 	assertDirExists(t, taskAbs(req, wantRel))
 	assertIndexEquals(t, req, req.TaskID, wantRel)
 	assertTopicPathNull(t, req, req.TaskID)

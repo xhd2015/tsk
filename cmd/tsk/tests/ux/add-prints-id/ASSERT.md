@@ -9,8 +9,8 @@
 - Exit code 0.
 - Stdout is task id `1` plus trailing `\n` only.
 - Stderr empty.
-- Task directory `inbox/[1]-create-hello/` exists with `task.json` and `context/`.
-- `index/1` contains `inbox/[1]-create-hello`.
+- Task directory `inbox/[1]-hello/` exists with `task.json` and `context/`.
+- `index/1` contains `inbox/[1]-hello`.
 
 ## Side Effects
 
@@ -35,7 +35,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "1")
 
-	wantRel := inboxTaskRel(1, "create", req.Title)
+	wantRel := inboxTaskRel(1, req.Title)
 	taskDir := taskAbs(req, wantRel)
 	assertDirExists(t, taskDir)
 	assertDirExists(t, filepath.Join(taskDir, "context"))

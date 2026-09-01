@@ -1,9 +1,9 @@
 # Scenario
 
-**Feature**: advancing a parent renames its dir and cascades child index paths
+**Feature**: advancing a parent updates stage only; nested child paths stay put
 
 ```
-create parent + child -> advance parent -> indexes use new parent dirname
+create parent + child -> advance parent -> parent stage in_process; dirs unchanged
 ```
 
 ```go

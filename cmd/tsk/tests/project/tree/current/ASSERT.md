@@ -20,7 +20,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertNoANSI(t, resp.Stdout)
 	assertContains(t, resp.Stdout, ".\n")
 	assertContains(t, resp.Stdout, "dot-pkgs  github.com/xhd2015/dot-pkgs")
-	assertContains(t, resp.Stdout, "[1]-create-one  task 1  create")
+	assertContains(t, resp.Stdout, "[1] one  (create)")
 	assertContains(t, resp.Stdout, "1 task, 1 project")
 }
 ```

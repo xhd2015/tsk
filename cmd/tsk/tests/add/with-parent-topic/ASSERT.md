@@ -18,8 +18,8 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertStdoutTrimmedEquals(t, resp.Stdout, "2")
 
-	parentRel := topicTaskRel("kb", 1, "create", "parent report")
-	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(2, "create", "child detail")))
+	parentRel := topicTaskRel("kb", 1, "parent report")
+	childRel := filepath.ToSlash(filepath.Join(parentRel, taskDirName(2, "child detail")))
 	assertDirExists(t, taskAbs(req, childRel))
 	assertIndexEquals(t, req, 2, childRel)
 	task := readTaskJSON(t, taskAbs(req, childRel))

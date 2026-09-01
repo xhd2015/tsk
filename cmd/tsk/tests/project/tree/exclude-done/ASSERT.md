@@ -17,10 +17,10 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertContains(t, resp.Stdout, "dot-pkgs  github.com/xhd2015/dot-pkgs")
 	assertContains(t, resp.Stdout, "0 tasks, 1 project")
-	assertNotContains(t, resp.Stdout, "task 1")
+	assertNotContains(t, resp.Stdout, "finish-me")
 
 	doneList := runTskOK(t, req, "project", "tree", "--stage", "done", "--plain")
-	assertContains(t, doneList.Stdout, fmt.Sprintf("[%d]-done-finish-me  task %d  done", req.TaskID, req.TaskID))
+	assertContains(t, doneList.Stdout, fmt.Sprintf("[%d] finish-me  (done)", req.TaskID))
 	assertContains(t, doneList.Stdout, "1 task, 1 project")
 }
 ```

@@ -14,7 +14,7 @@ create → in_process → clarification → implementation → verification
                  ↘ done
 ```
 
-`done` is terminal. Directory basename updates with stage (`[id]-create-…` → `[id]-in_process-…`); nested children stay under the renamed parent (indexes cascade).
+`done` is terminal. Stage is stored in `task.json` only; the directory basename `[id]-<slug>` does not change on stage transitions.
 
 ## Commands
 
