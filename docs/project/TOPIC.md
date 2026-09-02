@@ -75,4 +75,7 @@ tsk update <id> --clear-project
 
 ## Tree
 
-Like `tsk tree`. Default: current project, exclude `done`.
+Like `tsk tree`. Default: current project, non-terminal stages only.
+`--done` / `--archived` filter to those stages (both ⇒ union). `--all` shows
+every project and every stage (narrow with `--done`/`--archived`). `--stage`
+filters to one stage and conflicts with `--done`/`--archived`.

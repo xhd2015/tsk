@@ -19,7 +19,8 @@ Commands:
   update     update task project and/or topic
   clarify    manage clarification questions
   followup   add followup context from summary
-  done       mark task done (use --force to bypass the workflow stage requirement)
+  done       mark task done from any non-terminal stage
+  archive    mark task archived from any non-terminal stage
   delete     permanently remove a task (use --recursive for nested sub-tasks)
   channel    manage conversational channels
   note       add or list timestamped notes on a task
@@ -98,16 +99,18 @@ Flags:
 }
 
 func projectTreeHelp() string {
-	return `Usage: tsk project tree [--name NAME | --project KEY] [--stage STAGE] [--all] [--color|--plain] [--json]
+	return `Usage: tsk project tree [--name NAME | --project KEY] [--stage STAGE | --done] [--archived] [--all] [--color|--plain] [--json]
 
 List project-scoped tasks as a tree (like tsk tree).
-Default: current cwd's project, exclude done.
+Default: current cwd's project, non-terminal stages only.
 
 Flags:
   --name NAME     filter by registry name / origin basename
   --project KEY   filter by origin key or registered name
-  --stage STAGE   filter by stage (disables default exclude-done)
-  --all           all projects (still excludes done unless --stage)
+  --stage STAGE   filter to one stage (conflicts with --done/--archived)
+  --done          show only done tasks
+  --archived      show only archived tasks (--done --archived shows both)
+  --all           all projects and all stages (narrow with --done/--archived)
   --color         force ANSI stage styling (no trailing stage text)
   --plain         force no ANSI; show  (stage); ASCII markers
   --json          emit structured JSON instead of the tree
@@ -391,7 +394,7 @@ tasks stay at the root. Under a topic, project is a secondary level.
 
 Kind markers: topic ▣ / # , project ◆ / @ (TTY vs --plain).
 Task leaves: padded [id] + title (512-rune cap). On color, stage is ANSI only
-(create plain; mid-pipeline tinted; done gray+strike); without color,  (stage).
+(create plain; mid-pipeline tinted; done/archived gray+strike); without color,  (stage).
 
 With --id, print a pruned branch from root to one task, including its
 notes and progress entries nested under the task leaf. Done/archived progress
@@ -590,11 +593,23 @@ Add followup context from summary stage.
 func doneHelp() string {
 	return `Usage: tsk done [--force] <id>
 
-Mark task done from summary or user_followup stage.
-Use --force to complete it from any non-terminal stage.
+Mark task done from any non-terminal stage.
+--force is accepted for compatibility and has no extra effect.
 
 Flags:
-  --force         bypass the normal workflow stage requirement
+  --force         accepted for compatibility (no extra effect)
+  -h, --help      show this help
+`
+}
+
+func archiveHelp() string {
+	return `Usage: tsk archive [--force] <id>
+
+Mark task archived from any non-terminal stage.
+--force is accepted for compatibility and has no extra effect.
+
+Flags:
+  --force         accepted for compatibility (no extra effect)
   -h, --help      show this help
 `
 }
@@ -605,7 +620,7 @@ func deleteHelp() string {
 Permanently remove a task directory and its index entry.
 Nested sub-tasks require --recursive (deletes the whole subtree).
 
-Unlike tsk done, the task does not remain in the tree.
+Unlike tsk done / tsk archive, the task does not remain in the tree.
 
 Flags:
   --recursive   also delete nested sub-tasks under this task

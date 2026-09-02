@@ -27,7 +27,7 @@ func RenderAgent(task storage.Task, dir string) string {
 	fmt.Fprintf(&b, "id: %d\n", task.ID)
 	fmt.Fprintf(&b, "title: %s\n", task.Title)
 	fmt.Fprintf(&b, "stage: %s\n", task.Stage)
-	fmt.Fprintf(&b, "terminal: %t\n", task.Stage == "done")
+	fmt.Fprintf(&b, "terminal: %t\n", storage.IsTerminal(task.Stage))
 	parts, err := storage.ParseTopicPath(task.TopicPath)
 	if err != nil || len(parts) == 0 {
 		fmt.Fprintf(&b, "topic: (not classified yet)\n")
@@ -226,6 +226,11 @@ func renderAgentAdvanceNext(task storage.Task) string {
 	case "done":
 		fmt.Fprintf(&b, "advance: blocked\n")
 		fmt.Fprintf(&b, "advance_reason: task is already done\n")
+		fmt.Fprintf(&b, "next:\n")
+
+	case "archived":
+		fmt.Fprintf(&b, "advance: blocked\n")
+		fmt.Fprintf(&b, "advance_reason: task is already archived\n")
 		fmt.Fprintf(&b, "next:\n")
 
 	default:

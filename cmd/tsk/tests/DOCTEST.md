@@ -26,8 +26,8 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **project** — `tsk project add|tree|list|which|register|unregister`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json`; auto ledger `projects-auto.json` (upsert on add; main-repo `cwd`; local-TZ `first_seen_at`/`last_seen_at`). `list` default/`--all` = union auto+registered with `tasks=`; `--auto` / `--registered` select one source; `--active` filters. `tree` = task forest. No mark import.
 - **add --parent** — `tsk add --parent <id> <title>` nests under the parent task directory (any depth); child inherits parent `topic_path`; mutually exclusive with `--topic`.
 - **Slug** — lowercase, non-letter-digit → `-`, collapse, trim, max 64 runes; immutable after create.
-- **Stage workflow** — `create → in_process → clarification → implementation → verification → summary → user_followup (loop to clarification) OR done`; `done` is terminal.
-- **Transitions** — `advance` follows allowed edges; `stage` sets stage directly (invalid jumps error); `clarify confirm -y` confirms all items and auto-advances to `implementation`; `followup` writes `context/followup-<ts>.md` and sets `user_followup`; `done` only from `summary` or `user_followup`.
+- **Stage workflow** — `create → in_process → clarification → implementation → verification → summary → user_followup (loop to clarification) OR done`; `archived` is an alternate off-spine terminal. `done` and `archived` are terminal.
+- **Transitions** — `advance` follows allowed edges; `stage` sets stage directly (invalid jumps error; `done` still only via stage from `summary`/`user_followup`); `clarify confirm -y` confirms all items and auto-advances to `implementation`; `followup` writes `context/followup-<ts>.md` and sets `user_followup`; `done` / `archive` from any non-terminal stage.
 - **topic set** — moves entire task directory; `--inbox` or empty path → `inbox/`; updates `topic_path` and `index/<id>`. Alias refs resolve to the canonical path before the move.
 - **topic mkdir** — creates topic directory tree under `topics/`. Errors if the path is an alias for another topic.
 - **topic.json** — optional metadata in `topics/<path>/topic.json`: `path`, `title`, `aliases`, `notes`, `updated_at`. Created by `topic note` / `topic alias add`. Reserved filename; not a task dir.
@@ -40,8 +40,9 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **label list** — `label list` prints sorted, deduplicated **label names** from all task `labels` and all `notes.jsonl` (task + topic). For `key=value` note labels the **key** is listed once (`grok-session-id=…` → `grok-session-id`). Footer `N label(s)`. Empty store → `0 labels`.
 - **progress** — `progress add --status STATUS --id ID <text...>` appends a `{ts,text,labels:["progress"],status}` line to the same task `notes.jsonl`; status is required and one of `in-progress`, `blocked`, `done`, `archived`. Legacy `started` entries remain readable. `progress list [--json] [--limit N] [--status STATUS] [--show-index] --id ID` lists progress-labeled entries (oldest first; `--status` filters; `--show-index` prefixes 1-based indices). `progress edit --status STATUS --id ID --index N [text...]` updates one 1-based progress entry (and replaces text only when supplied). `progress archive --id ID --index N` sets that entry to `archived`. `progress show --id ID` prints the latest entry or `no progress`. Human format: `ts  [progress]  (status)  text`. `done`/`archived` entries are gray + struck through when output is an interactive terminal (or `tree --color`); JSON and `tree --plain` contain no ANSI. `show` prints `progress: <status> (N entries)` when the latest has a status, else `progress: N entries`; omitted when no progress entries.
 - **search** — `search [--task|--note|--progress|--topic|--all]… [--color|--no-color] [--json] <query>` case-insensitive substring search under `TSK_HOME`. Kind flags use less-flags `Group(CollectParsedFlags)`; no kind flags or any `--all` → all surfaces (`--all` wins over other kinds, no error); otherwise OR of kinds. `--note` excludes progress-labeled entries; `--progress` is only those. Surfaces: task titles, task notes, progress, topic `notes.jsonl`. Color via `dot-pkgs/terminal/color` (`ModeFromFlags` / `EnabledFor`): auto (TTY + `NO_COLOR`), `--color` always, `--no-color` never; conflict errors; human colors green anchor / blue kind / gray meta+footer and bolds the first EqualFold query span; `--json` never ANSI. Human: hit header + indented text + `N match(es)`; zero hits → `0 matches` exit 0. `--json` array of `{kind,task_id?,topic?,text,ts?,labels?,status?}`. Empty query → `Error: tsk search: query required`.
-- **done** — `done <id>` marks a task done only from `summary` or `user_followup`; `done --force <id>` completes it directly from any non-terminal stage. Both update `task.json` stage and stage history (directory basename unchanged).
-- **delete** — `delete <id>` permanently removes the task directory and `index/<id>`; nested sub-tasks require `--recursive` (whole subtree + all descendant indexes). Stdout `deleted <id>`. No tombstone (task ids never reuse). Unlike `done`, the task does not remain in the tree.
+- **done** — `done <id>` marks a task done from any non-terminal stage; `--force` is accepted for compatibility (no extra effect). Updates `task.json` stage and stage history (directory basename unchanged). Refuses when already `done` or `archived`.
+- **archive** — `archive <id>` marks a task archived from any non-terminal stage (shelve without claiming completion); `--force` accepted as no-op. Same storage update as done. Refuses when already terminal; no `done`↔`archived` moves.
+- **delete** — `delete <id>` permanently removes the task directory and `index/<id>`; nested sub-tasks require `--recursive` (whole subtree + all descendant indexes). Stdout `deleted <id>`. No tombstone (task ids never reuse). Unlike `done`/`archive`, the task does not remain in the tree.
 - **topic view** — `view [--json] <topic>` prints the topic tree (sub-topics + task nodes `[id]-<slug>` with color stage styling, or `[id]-<slug>  (stage)` when color is off). Skips `topic.json` / `notes.jsonl`. Empty topic: header + `(empty)`. Unicode `├──`/`└──`. `--json` nested `{path,aliases,tasks,subtopics}`; task nodes may include nested `tasks`; child `path` is the directory name.
 - **add --note** — `create … [--note TEXT]… <title>` appends each note to the new task’s `notes.jsonl` after create (same format as `note add`); stdout remains the id only; empty `--note` errors.
 - **skill** — `skill --show|--install|--list` embeds Shape-3 docs (`docs/SKILL.md` + `docs/<topic>/TOPIC.md`) via `skillcmd.SingleSkill`. Actions are flags (both orders). `--list` prints `tsk` then sorted topic paths. `--help` appends Available topics. Install via `skillcmd.HandleInstall` (flags in `--install --help` only — not in SKILL.md). Root help lists `skill`.
@@ -113,8 +114,18 @@ tsk tests
 │   └── help/view/
 ├── next/                         # tsk next
 │   └── oldest/                   # two in_process → older id on stdout
-├── done/                         # tsk done
-│   └── from-summary/             # at summary → done, terminal stage
+├── done/                         # tsk done (any non-terminal → done)
+│   ├── from-create/              # create → done without --force
+│   ├── from-summary/             # at summary → done, terminal stage
+│   ├── force-from-create/        # --force still works (compat no-op)
+│   ├── force-already-done/       # already done → error
+│   ├── already-archived/         # archived → done refused
+│   └── help/                     # documents any non-terminal + --force compat
+├── archive/                      # tsk archive (any non-terminal → archived)
+│   ├── from-create/              # create → archived
+│   ├── already-archived/         # second archive refused
+│   ├── already-done/             # done → archive refused
+│   └── help/                     # documents any non-terminal + --force compat
 ├── followup/                     # tsk followup
 │   └── basic/                    # at summary → user_followup + context file
 ├── status/                       # tsk status (diagram | agent formats)
@@ -232,7 +243,7 @@ tsk tests
 │   ├── which/basic/             # origin/name/cwd probe
 │   ├── tree/                    # project tree (task forest)
 │   │   ├── current/
-│   │   ├── exclude-done/
+│   │   ├── exclude-done/        # default active-only; --done/--archived/--all stage filters
 │   │   ├── all/
 │   │   └── empty/
 │   ├── list/                    # project list (all/auto/registered)
@@ -409,7 +420,11 @@ tsk tests
 | 112 | progress/help/top | `progress -h` lists add/list/edit/archive/show |
 | 113 | progress/show-integration | `show` prints `progress: in-progress (1 entry)` |
 | 9 | next/oldest | two `in_process` tasks → stdout = older id |
-| 10 | done/from-summary | at summary → `tsk done` → stage done, dir renamed |
+| 10 | done/from-summary | at summary → `tsk done` → stage done, dir unchanged |
+| 10a | done/from-create | create → `tsk done` → stage done |
+| 10b | done/already-archived | archived → `tsk done` → already archived |
+| 10c | archive/from-create | create → `tsk archive` → stage archived |
+| 10d | archive/already-done | done → `tsk archive` → already done |
 | 11 | followup/basic | at summary → `tsk followup` → `user_followup` + `context/followup-*.md` |
 | 12 | status/diagram | at clarification + `--color` → compact box art, `│ clarification │`, edge labels `refine`/`confirmed`, green on clarification (geometry sealed by diagram-golden) |
 | 55 | status/diagram-golden | `--format=diagram` (no color) → stdout byte-equal to unicode `expected.txt`; no-followup `┐`/`│`/`┘` same column |
@@ -624,6 +639,8 @@ type Request struct {
 	TskHome  string
 	Args     []string
 	TaskID   int
+	OpenID     int // secondary id for an open (non-terminal) task in the same leaf
+	ArchivedID int // secondary id when a leaf also creates an archived task
 	Title    string
 	Topic    string
 	Labels   []string

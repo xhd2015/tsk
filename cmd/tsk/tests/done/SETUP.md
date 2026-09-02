@@ -1,9 +1,9 @@
 # Scenario
 
-**Feature**: `tsk done` marks task terminal from allowed stages
+**Feature**: `tsk done` marks task terminal from any non-terminal stage
 
 ```
-# summary -> done (not via advance); user_followup -> done also allowed
+# any open stage -> done; already terminal errors; --force accepted as no-op
 tsk done <id> -> stage done; further advance errors
 ```
 

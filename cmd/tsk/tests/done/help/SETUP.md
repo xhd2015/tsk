@@ -1,6 +1,6 @@
 # Scenario
 
-**Feature**: done help documents forced completion
+**Feature**: done help documents any non-terminal completion
 
 ```
 tsk done --help

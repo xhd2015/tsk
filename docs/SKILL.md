@@ -36,9 +36,10 @@ product model and agent workflows.
 3. When session ids, dirs, or other pointers are known at create time, pass
    them as `tsk add … --note "…" "title"` (repeatable). Use
    `tsk note add --id N …` only for notes after the task already exists.
-4. Advance stages when doing real work; use `tsk done` (or `--force`) only
-   when finishing. Use `tsk delete` to permanently remove a mistaken or
-   duplicate task (`--recursive` if it has nested sub-tasks).
+4. Advance stages when doing real work; use `tsk done` when finishing or
+   `tsk archive` to shelve without claiming completion. Use `tsk delete` to
+   permanently remove a mistaken or duplicate task (`--recursive` if it has
+   nested sub-tasks).
 5. Do not `tsk topic set` / `tsk update --set-topic` on a nested child — reparent first.
 6. To attach an existing task to a project or move/clear its topic: `tsk update <id> …`.
    Remove an empty topic with `tsk topic rm <path>` (refuses if any task remains).

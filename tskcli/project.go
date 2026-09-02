@@ -627,12 +627,14 @@ type projectTreeJSONProject struct {
 
 func runProjectTree(home string, args []string) error {
 	var nameFlag, projectFlag, stageFlag string
-	var allFlag, asJSON, colorFlag, plain bool
+	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain bool
 	remaining, err := lessflags.
 		String("--name", &nameFlag).
 		String("--project", &projectFlag).
 		String("--stage", &stageFlag).
 		Bool("--all", &allFlag).
+		Bool("--done", &doneFlag).
+		Bool("--archived", &archivedFlag).
 		Bool("--json", &asJSON).
 		Bool("--color", &colorFlag).
 		Bool("--plain", &plain).
@@ -650,6 +652,9 @@ func runProjectTree(home string, args []string) error {
 	}
 	if nameFlag != "" && projectFlag != "" {
 		return projectFail(fmt.Errorf("tsk project tree: --name conflicts with --project"))
+	}
+	if stageFlag != "" && (doneFlag || archivedFlag) {
+		return projectFail(fmt.Errorf("tsk project tree: --stage conflicts with --done/--archived"))
 	}
 
 	reg, err := storage.ReadProjects(home)
@@ -683,16 +688,12 @@ func runProjectTree(home string, args []string) error {
 		return err
 	}
 
-	excludeDone := stageFlag == ""
 	var filtered []projectTaskEntry
 	for _, e := range entries {
 		if !taskMatchesProjectFilter(e.Task, wantKey, wantName, reg) {
 			continue
 		}
-		if stageFlag != "" && e.Task.Stage != stageFlag {
-			continue
-		}
-		if excludeDone && e.Task.Stage == "done" {
+		if !projectTreeStageAllowed(e.Task.Stage, stageFlag, doneFlag, archivedFlag, allFlag) {
 			continue
 		}
 		filtered = append(filtered, e)
@@ -730,6 +731,31 @@ func runProjectTree(home string, args []string) error {
 	fancy := !plain && isStdoutTTY()
 	fmt.Print(formatProjectTree(groups, color, fancy))
 	return nil
+}
+
+// projectTreeStageAllowed applies project-tree stage visibility:
+//   - default: non-terminal only
+//   - --done / --archived: only those stages (union when both)
+//   - --all alone: all stages
+//   - --all with --done/--archived: all projects already selected; stage flags narrow
+//   - --stage: exact stage
+func projectTreeStageAllowed(stage, stageFlag string, doneFlag, archivedFlag, allFlag bool) bool {
+	if stageFlag != "" {
+		return stage == stageFlag
+	}
+	if doneFlag || archivedFlag {
+		if doneFlag && stage == "done" {
+			return true
+		}
+		if archivedFlag && stage == "archived" {
+			return true
+		}
+		return false
+	}
+	if allFlag {
+		return true
+	}
+	return !storage.IsTerminal(stage)
 }
 
 func taskMatchesProjectFilter(task storage.Task, wantKey, wantName string, reg storage.ProjectsFile) bool {

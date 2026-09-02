@@ -3,6 +3,7 @@ package storage
 import "fmt"
 
 // AllStages is the ordered workflow for status display.
+// archived is terminal but off-spine (not listed here).
 var AllStages = []string{
 	"create",
 	"in_process",
@@ -23,6 +24,8 @@ var AdvanceNext = map[string]string{
 }
 
 // AllowedStageTargets lists valid direct targets for `tsk stage`.
+// done remains reachable via stage from summary/user_followup only;
+// archived is entered only via `tsk archive` (not listed as a target).
 var AllowedStageTargets = map[string][]string{
 	"create":         {"in_process"},
 	"in_process":     {"clarification"},
@@ -32,6 +35,22 @@ var AllowedStageTargets = map[string][]string{
 	"summary":        {"user_followup", "done"},
 	"user_followup":  {"clarification", "done"},
 	"done":           {},
+	"archived":       {},
+}
+
+// IsTerminal reports whether stage is a finished terminal state.
+func IsTerminal(stage string) bool {
+	return stage == "done" || stage == "archived"
+}
+
+// TerminalTransitionError returns the error for mutating a terminal task.
+func TerminalTransitionError(stage string) error {
+	switch stage {
+	case "archived":
+		return fmt.Errorf("invalid transition: task is already archived")
+	default:
+		return fmt.Errorf("invalid transition: task is already done")
+	}
 }
 
 // CanAdvance reports whether advance is allowed from the given stage.
@@ -56,8 +75,8 @@ func CanStage(from, to string) bool {
 
 // ValidateStageTransition returns an error for invalid transitions.
 func ValidateStageTransition(from, to string) error {
-	if from == "done" {
-		return fmt.Errorf("invalid transition: task is already done")
+	if IsTerminal(from) {
+		return TerminalTransitionError(from)
 	}
 	if !CanStage(from, to) {
 		return fmt.Errorf("invalid transition: %s -> %s", from, to)
@@ -67,8 +86,8 @@ func ValidateStageTransition(from, to string) error {
 
 // ValidateAdvance returns an error when advance is not allowed.
 func ValidateAdvance(from string) error {
-	if from == "done" {
-		return fmt.Errorf("invalid transition: task is already done")
+	if IsTerminal(from) {
+		return TerminalTransitionError(from)
 	}
 	if from == "clarification" {
 		return fmt.Errorf("invalid transition: use clarify confirm to advance from clarification")

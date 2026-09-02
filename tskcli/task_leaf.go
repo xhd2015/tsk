@@ -55,7 +55,7 @@ func taskStageStyle(stage string, color bool) string {
 	switch stage {
 	case "create":
 		return ""
-	case "done":
+	case "done", "archived":
 		return ansiGray + ansiStrikethrough
 	case "in_process":
 		return ansiCyan

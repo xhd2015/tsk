@@ -24,6 +24,9 @@ func TestTaskStageStyle(t *testing.T) {
 	if got := taskStageStyle("done", true); got != ansiGray+ansiStrikethrough {
 		t.Fatalf("done style: got %q", got)
 	}
+	if got := taskStageStyle("archived", true); got != ansiGray+ansiStrikethrough {
+		t.Fatalf("archived style: got %q", got)
+	}
 	if got := taskStageStyle("in_process", true); got != ansiCyan {
 		t.Fatalf("in_process style: got %q", got)
 	}

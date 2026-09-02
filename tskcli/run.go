@@ -79,6 +79,8 @@ func dispatch(home string, args []string) error {
 		return runFollowup(home, args[1:])
 	case "done":
 		return runDone(home, args[1:])
+	case "archive":
+		return runArchive(home, args[1:])
 	case "delete":
 		return runDelete(home, args[1:])
 	case "channel":

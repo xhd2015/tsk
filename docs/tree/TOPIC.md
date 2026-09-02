@@ -17,7 +17,7 @@ tsk tree --id ID [--json] [--color|--plain]
 - Root `.` then topics, project groups, and ungrouped inbox tasks (sorted).
 - **Topic** is primary; **project** is secondary (under a topic, or at root for inbox).
 - Kind markers: topic `▣` / `#`, project `◆` / `@` (TTY vs `--plain`). With color, project origin (`github.com/…`) is grey; the short name stays plain.
-- Leaf label: padded `[id]` + title (title capped at 512 runes). Color on → stage via ANSI only (`create` plain, mid-pipeline tinted, `done` gray+strike); color off → trailing `  (stage)`. On-disk dir stays `[id]-<slug>`.
+- Leaf label: padded `[id]` + title (title capped at 512 runes). Color on → stage via ANSI only (`create` plain, mid-pipeline tinted, `done`/`archived` gray+strike); color off → trailing `  (stage)`. On-disk dir stays `[id]-<slug>`.
 - Nested sub-tasks stay under their parent leaf.
 - Footer: `N tasks, M topics, P projects`.
 - Color auto on TTY unless `NO_COLOR` is set; `--color` forces; `--plain` disables color and fancy markers.

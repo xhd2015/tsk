@@ -8,13 +8,13 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runDone(home string, args []string) error {
-	setCommand(currentCtx, "done", args)
+func runArchive(home string, args []string) error {
+	setCommand(currentCtx, "archive", args)
 
 	var force bool
 	remaining, err := lessflags.
 		Bool("--force", &force).
-		Help("-h,--help", doneHelp()).
+		Help("-h,--help", archiveHelp()).
 		HelpNoExit().
 		Parse(args)
 	if err != nil {
@@ -25,7 +25,7 @@ func runDone(home string, args []string) error {
 	}
 	_ = force // accepted for compatibility; no extra effect
 	if len(remaining) != 1 {
-		return fail(fmt.Errorf("tsk done: task id required"))
+		return fail(fmt.Errorf("tsk archive: task id required"))
 	}
 	id, err := parseID(remaining[0])
 	if err != nil {
@@ -39,5 +39,5 @@ func runDone(home string, args []string) error {
 	if storage.IsTerminal(task.Stage) {
 		return fail(storage.TerminalTransitionError(task.Stage))
 	}
-	return storage.SetTaskStage(&task, taskDir, "done", "")
+	return storage.SetTaskStage(&task, taskDir, "archived", "")
 }
