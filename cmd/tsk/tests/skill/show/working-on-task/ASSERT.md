@@ -1,7 +1,9 @@
 ## Expected
 
 - Exit 0; frontmatter `name: tsk/working-on-task`.
-- Body covers expanded intake, kck poll commands, and independent verify.
+- Body uses numbered subsections (Pick a task via show or
+  `tsk project tree --all` + current-project preference), reuse-or-create
+  worktree, kck new/watch/send/wait, tsk stages/must-notes, verify, and report.
 
 ## Exit Code
 
@@ -20,16 +22,25 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("expected name: tsk/working-on-task:\n%s", out)
 	}
 	for _, want := range []string{
-		"Intent",
+		"## 1. Pick a task",
+		"tsk project tree --all",
+		"tsk project which",
 		"Project",
-		"Prerequisites",
-		"Definition of done",
-		"Verification steps",
-		"Artifacts needed",
+		"Intent kind",
+		"E2E acceptance",
+		"Must-notes",
+		"tsk show",
+		"linked git worktree",
+		"reused existing worktree",
+		"wrk <project-location> --no-config",
+		"wrk --bring",
+		"wrk --done",
 		"kck grok new",
 		"kck grok messages",
 		"kck grok snapshot",
-		"Independent verify",
+		"kck grok send",
+		"kck grok wait",
+		"tsk done",
 		"Report",
 	} {
 		if !strings.Contains(out, want) {

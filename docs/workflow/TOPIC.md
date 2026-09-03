@@ -41,4 +41,4 @@ create → in_process → clarification → implementation → verification
 - Use `done` to finish or `archive` to shelve from any open stage; both are terminal.
 - Use `delete` for mistakes/duplicates; refuse without `--recursive` when children exist.
 - When the user asks to work on / finish a task end-to-end, follow topic
-  `working-on-task` (intake → automate → report), not only these tips.
+  `working-on-task` (tsk + wrk + kck playbook), not only these tips.

@@ -1,210 +1,261 @@
 ---
 name: tsk/working-on-task
 description: >-
-  When the user asks to work on a task: clarify intent, project,
-  prerequisites, definition of done, verification steps, and artifacts;
-  spawn a kck worker after plan approval; main polls via messages/snapshot
-  and verifies independently before done.
+  When the user asks to work on a task: pick/approve a task; clarify project,
+  intent kind, and E2E acceptance; reuse task cwd if it is a live linked
+  worktree else wrk-create; drive a kck grok worker (new → watch → send →
+  wait); update tsk stages and notes; verify; ship with wrk on user approve;
+  tsk done after wrk --done.
 ---
 
 # working-on-task
 
-Use this topic when the user asks to **work on** / **drive** / **finish** a
-tsk task (by id or from `tsk tree` / `tsk project tree`).
-
-Stage mechanics live in `workflow`. This topic is the **agent playbook**:
-intake → approve → spawn worker (`kck`) → poll → independent verify → report.
-
-```text
-Main agent (this session)              Worker (kck grok|codex pane)
-  Intake + plan with user
-  User approves plan
-  kck … new "brief…"  ───────────────►  implements in task cwd
-  ← session-id; note on tsk task
-  loop: messages + snapshot  ◄────────  progress / claims
-  worker claims finished
-  Independent verify (human perspective)
-  tsk done | blocked report
-```
-
-**Roles**
+Playbook for the **main** agent to mimic daily work on a tsk task using three
+CLIs: **`tsk`** (stages + notes), **`wrk`** (worktree + land), **`kck`**
+(worker session). Self-contained — do not load other skill docs for this flow.
+Extra flags: each tool’s `--help`. Procedure is the numbered sections below.
 
 | Role | Owns |
 |------|------|
-| **Main** | Intake, plan approval, `kck` spawn/poll, tsk stages, independent verify, `tsk done` / report |
-| **Worker** | Implementation only against approved plan + DoD; **never** `tsk done` |
+| **Main** | Intake, `tsk` stages/notes/progress, `wrk` create/bring/ship, `kck` spawn/watch/send/wait, independent verify, present to user, `tsk done` |
+| **Worker** | Clarify then implement in the worktree only; **never** `tsk done` / `wrk --done` |
 
 ## When to use
 
-- User picks a task id or says “work on this todo”
-- Goal is **`done`** or a clean **blocked** stop with a report
-- **Not** for ad-hoc create/list/note-only sessions — use Default agent
-  workflow in the root skill index
+- User asks to **work on** / **drive** / **finish** a task (id or from tree)
+- Goal: verified result, user-approved land, or a clean **blocked** stop with notes
+- Not for ad-hoc create/list/note-only sessions
 
-## Phase 1 — Intake (required before spawn)
+## Stages (main only)
 
-Clarify with the user (prefer `tsk clarify add <id> …`; record durable answers
-in notes). Skip a field only when it is already clear on the task (e.g.
-`project` / `cwd` from `tsk show`).
+Spine: `create → in_process → clarification → implementation → verification → summary → done`  
+(alt terminal: `archived`). Prefer `tsk advance`; use `tsk stage` sparingly.
 
-| Field | Ask | Pass criteria |
-|-------|-----|----------------|
-| **Intent** | What should be true when this is finished? (one sentence) | Shared understanding; no silent reinterpretation |
-| **Project** | Which checkout / origin? | Matches task `project` / `cwd`, or user confirms a different target |
-| **Prerequisites** | Tools, auth, deps (e.g. browser-agent, `kck`)? | Each item: ready, optional, or **BLOCKER** with unblock step |
-| **Definition of done** | Pass/fail outcome criteria — not “looks good” | Clear success bar |
-| **Verification steps** | Ordered human-style steps **main** will run after the worker claims finished | Main can re-run without asking “is this done?” |
-| **Artifacts needed** | Evidence to collect (logs, screenshots, transcripts, URLs, note paths, session ids) | Worker leaves them; main checks they exist |
+| Moment | Stage action |
+|--------|----------------|
+| §1, still `create` | `tsk advance <id>` → `in_process` |
+| §2 answers recorded | `tsk clarify confirm -y <id>` → `implementation` |
+| §3–§7 | stay `implementation`; progress notes |
+| §8 verify starts | advance → `verification` |
+| §8 fail / §9 followup | honest stage; progress `blocked` or back to implement work |
+| §11 after `wrk --done` | summary note → **`tsk done <id>`** |
+| User skips ship after approve | `tsk done` only if they accept verified-only |
 
-**Definition of done** = *what* success means.  
-**Verification steps** = *how* main will check it.  
-**Artifacts** = *what proof* must exist.
+## Must-notes (user-checkable)
 
-Also produce a short **plan** for user approval. Do **not** spawn a worker
-while intake is incomplete or the plan is unapproved.
+Use `tsk note add --id <id> --label …` and `tsk progress add --id <id> --status …`.
 
-Then:
+| When | Label / kind | Content |
+|------|--------------|---------|
+| §2 | (text or `acceptance`) | project, intent kind, E2E acceptance |
+| §3 | `worktree=<abs-path>` | path used (reused or created); note “reused existing worktree” when reusing |
+| §3 | `brought=<basenames>` | if `--bring` used |
+| §4 | `grok-session-id=<uuid>` | worker session id (codex: `codex-session-id=`) |
+| §5–§7 | progress `in-progress` | milestones / kickoff |
+| §8 | `verify` / progress | pass/fail + evidence paths |
+| §8/§9 wait | note | presented to user / followup ask |
+| §10–§11 | `ship` | land/tag/peel/`wrk --done` summary |
 
-1. Orient: `tsk status --format=agent <id>`.
-2. Claim if still `create`: `tsk advance <id>` → `in_process`.
-3. After intake answers: `tsk clarify confirm -y <id>` → `implementation`
-   (main may advance here when spawning the worker).
+## 1. Pick a task
 
-## Phase 2 — Spawn worker (`kck`)
+1. If the user **explicitly gave a task id** → use it. Run `tsk show <id>` and
+   keep `cwd:` / `project:` for §3 (`project:` is the project filesystem path).
+   Confirm with the user only if the id is ambiguous.
+2. Else discover candidates:
+   - Run `tsk project tree --all`.
+   - If the current directory resolves to a project (`tsk project which`
+     succeeds), **prefer suggesting** a non-terminal task under that project
+     from the tree.
+   - Otherwise propose from the full `--all` view (say briefly why).
+3. **Ask the user for approval** of the chosen id before continuing.
+4. Orient: `tsk status --format=agent <id>`. If still `create` →
+   `tsk advance <id>` → `in_process`.
 
-After the user **approves the plan**, start a dedicated agent session in the
-task workspace (`cwd` from `tsk show`). Prefer **grok** unless the user asks
-for Codex.
+## 2. Clarify (with user)
+
+Ask only what is not already clear on the task (`tsk show`):
+
+| Field | Ask |
+|-------|-----|
+| **Project** | Correct checkout / path? (confirm `project:` from show) |
+| **Intent kind** | `feature` / `doc change` / `issue report` / `bug repro` / other |
+| **E2E acceptance** | Real, human-like checks that must pass for “done” |
+
+Record answers in notes (and `tsk clarify add` as needed). Then
+`tsk clarify confirm -y <id>` → `implementation`. Do **not** create a worktree
+or spawn a worker until this is done.
+
+## 3. Worktree (reuse or `wrk`)
+
+**Default when the user explicitly gave the task id** — from `tsk show <id>`:
+
+```text
+cwd set AND path exists AND is a linked git worktree
+  → reuse that path (do not wrk-create)
+else
+  → wrk <project-location> --no-config -t "task-[id]: <short description>"
+```
+
+- **`<project-location>`** = `project:` from `tsk show` (already a path; expand
+  `~` as needed), or the path confirmed in §2 if show had none / user
+  overrode it.
+- **Linked worktree** = a secondary checkout (e.g. `.git` is a `gitdir:` file /
+  listed under `git worktree list`) — **not** the project main repo alone.
+  If `cwd` is missing, gone, or only the main checkout → create.
+- If the agent picked the task (no explicit id from the user) → **create** with
+  `wrk` unless the user later points at an existing worktree to reuse.
 
 ```bash
-kck grok new --dir <task-cwd> --submit "$(cat <<'EOF'
+wrk <project-location> --no-config -t "task-[id]: <short description>"
+```
+
+Note `worktree=<abs-path>` (reused or created). On reuse, note text
+**reused existing worktree**. If dependency projects are needed:
+
+```bash
+wrk --bring agent-pro dot-pkgs   # basenames; example only
+```
+
+Note `brought=`. All later edits/tests/ship use the worktree (and
+`./external/…` for brought trees) — not the bare main checkout.
+
+## 4. Spawn worker (`kck`)
+
+Prefer **grok**. Do **not** pass `--submit` on `new` (kickoff is §6).
+
+```bash
+kck grok new --dir <worktree> "$(cat <<'EOF'
 Work on tsk <id>: <title>
 
-Approved plan:
+Project: …
+Intent kind: …
+E2E acceptance (main will re-run): …
 …
 
-Intent: …
-Definition of done: …
-Verification steps (main will re-run these — leave artifacts):
-…
-Artifacts needed: …
-
-Implement only. Do not run tsk done. When finished, say so clearly with evidence paths.
+Clarify anything unclear first. Wait for an explicit kickoff before implementing.
+Do not run tsk done or wrk --done.
 EOF
 )"
 ```
 
-Capture **`session-id:`** from stdout and store it on the task:
+`kck grok new` prepends `/brainstorm` — expected. Default new terminal (user-visible);
+avoid `--here` unless asked. Capture `session-id:` → note `grok-session-id=`.
+Codex if user asks: same shape with `kck codex new` / `codex-session-id=`
+(no `codex wait` yet — use messages/snapshot).
+
+## 5. Watch worker
+
+While the worker clarifies (or after a kickoff turn), read progress from the
+session — do not rely on memory alone:
+
+| Action | Command |
+|--------|---------|
+| Chat | `kck grok messages <session-id>` |
+| Pane | `kck grok snapshot <session-id>` |
+
+Prefer `snapshot` when it may be waiting on input. Record meaningful progress
+on the tsk task. Do not invent a monitor + hash watcher.
+
+**Blocked** (stop; note unblock ask): prerequisite missing, decisions outside
+agreed scope, pane stuck after snapshot + user check.
+
+## 6. Kickoff implement
+
+When worker clarification is finished, **`send`** the implement kickoff (plan
+already agreed; implement only; leave evidence for E2E):
 
 ```bash
-tsk note add --id <id> --label grok-session-id=<uuid> \
-  'kck worker for implementation'
+kck grok send --session-id <session-id> "…"
 ```
 
-Use `kck codex new` the same way when the runner is Codex (`codex-session-id=`
-or the project’s usual label).
+## 7. Wait for turn
 
-**Footgun:** `kck grok new` currently **prepends `/brainstorm`** to the prompt.
-After plan approval the brief must state clearly: plan already approved —
-**implement only** (do not re-brainstorm). If a no-brainstorm launch path
-appears later, prefer that.
+```bash
+kck grok wait <session-id>
+```
 
-Do not use `--here` for this flow unless the user asks; default new terminal
-keeps the worker pane **visible to the user**.
+Block until the turn completes (or timeout / not-running). Then continue to
+verify (§8) or re-watch (§5) as needed.
 
-## Phase 3 — Poll worker (main ↔ `kck`)
+## 8. Verify (main)
 
-Main interacts with the spawned session; do not rely on memory alone.
+Do **not** trust the worker’s claim alone. Advance to `verification`. Re-run the
+§2 **E2E acceptance** as a human would (real journeys, UI/runtime when listed).
+Confirm evidence exists.
 
-| Action | Command | Purpose |
-|--------|---------|---------|
-| Spawn | `kck grok new "…"` | Prints `session-id:`; open user-visible pane |
-| Chat / claims | `kck grok messages --session-id <id>` | Message updates from the worker |
-| Live pane | `kck grok snapshot <id>` | Terminal text the user also sees (stuck / waiting / idle) |
+| Result | Next |
+|--------|------|
+| **FAIL** | Note evidence; `send` (§6) or re-watch (§5); do not present as done |
+| **PASS** | Note verify pass; **present result to user and wait** for instruction |
 
-Codex: `kck codex messages` / `kck codex snapshot` with the same session id.
+## 9. User followup
 
-**Poll loop** until the worker clearly claims finished, asks a blocking
-question, or appears stuck:
+If the user wants changes → loop **§5** / **§6** (watch / `send`), keep notes
+honest. If they approve → §10.
 
-1. `messages --session-id` for progress and claims.
-2. `snapshot` when status is unclear or the pane may be waiting on input
-   (prefer snapshot for “is it waiting on the user?”).
-3. Optional: `kck grok send --session-id <id> "…"` only for small nudges
-   already covered by the approved plan; otherwise escalate to the user.
-4. Record meaningful progress on the tsk task (`progress` / notes).
+## 10. Ship (`wrk`)
 
-**Blocked** during poll (stop; report — do not invent answers):
+Only after **user approve**. cwd = feature worktree. **No PR** unless the user
+explicitly asks for `--pr`.
 
-- Prerequisite BLOCKER
-- Worker needs decisions outside the approved plan
-- Pane stuck with no path forward after snapshot + user check
+```bash
+wrk --add-all --commit -m "<summary>" \
+  --merge-back --tag-next --push --sync --reinstall-local
+```
 
-## Phase 4 — Independent verify (main)
+If there are brought `./external/…` trees:
 
-When the worker **claims finished**, main **does not** trust that claim alone.
+1. `wrk --status` in the feature worktree.
+2. Land each brought dependency **least-deps-first** (same commit + merge-back
+   + tag/push/sync/reinstall line in that tree).
+3. `wrk --status` again on the feature worktree.
 
-1. Advance / stay in `verification` as appropriate.
-2. Re-run the intake **verification steps** from a **human perspective**.
-3. Confirm every **artifact** exists and matches DoD.
-4. Prefer **verify-on-behalf-of-user** (scenario / human-shaped verify +
-   transcript) when the surface needs real journeys, UI, or bring-up — not
-   only the worker’s self-reported tests.
+## 11. Cleanup and `tsk done`
 
-| Verify result | Next |
-|---------------|------|
-| **PASS** | Summary note → `tsk done <id>` |
-| **FAIL** | Evidence back to worker (`send` or new brief) or user; do not `done` |
-| **BLOCKED** | Report unblock ask; leave stage honest |
+When status is clean:
 
-Worker self-check / doctest green is **not** sufficient for `tsk done` when
-intake listed human verification steps or UI/runtime artifacts.
+```bash
+wrk --done
+```
 
-## Phase 5 — Report
+Note ship summary → `tsk done <id>`. Never `wrk --done` before land if unmerged
+work remains only on the worktree.
 
-Always end with a user-facing report:
+## Report
 
 | Outcome | Include |
 |---------|---------|
-| **Finished** | Stage `done`; intent; verify steps run; artifacts (paths); worker `session-id` |
-| **Blocked** | Current stage; last `messages` / `snapshot` insight; exact unblock ask |
-| **Verify FAIL** | What failed vs DoD; whether worker was re-nudged |
-
-Do not claim finished without verify evidence. Do not leave a long run in
-`implementation` with no progress note.
-
-## tsk stage ownership (main)
-
-| Stage | Main does |
-|-------|-----------|
-| `implementation` | Spawn/poll worker; progress notes |
-| `verification` | Independent verify (steps + artifacts) |
-| `summary` | Short summary note |
-| `done` | Only after verify PASS |
-| `archived` | Shelve without claiming success |
-
-Prefer `tsk advance` along the spine; use `tsk stage` sparingly.
+| **Finished** | `done`; acceptance; verify evidence; worktree; session-id; ship/`wrk --done` |
+| **Awaiting user** | verify pass notes; what to approve or follow up |
+| **Blocked / verify fail** | stage; last messages/snapshot insight; exact unblock ask |
 
 ## Commands cheat sheet
 
 ```bash
 # tsk
 tsk show <id>
+tsk project which
+tsk project tree --all
 tsk status --format=agent <id>
 tsk clarify add <id> <question…>
 tsk clarify confirm -y <id>
 tsk advance <id>
 tsk progress add --id <id> --status in-progress|done|blocked "…"
+tsk note add --id <id> --label worktree=<path> "…"
 tsk note add --id <id> --label grok-session-id=<uuid> "…"
 tsk done <id>
-tsk archive <id>
 
-# kck (grok; same shape for codex)
-kck grok new --dir <cwd> --submit "…"
-kck grok messages --session-id <session-id>
+# wrk (create when not reusing a live linked worktree cwd from tsk show)
+wrk <project-location> --no-config -t "task-[id]: <short description>"
+wrk --bring <basename…>
+wrk --status
+wrk --add-all --commit -m "…" --merge-back --tag-next --push --sync --reinstall-local
+wrk --done
+
+# kck (grok; codex same shape where available)
+kck grok new --dir <worktree> "…"
+kck grok messages <session-id>
 kck grok snapshot <session-id>
-kck grok send --session-id <session-id> "…"   # optional nudge
+kck grok send --session-id <session-id> "…"
+kck grok wait <session-id>
 ```
-
-See also: `workflow` (stages), `note` (notes/progress), `project` (project tree).
-External: `kck` CLI; **verify-on-behalf-of-user** for human-shaped verify.

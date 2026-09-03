@@ -4,8 +4,8 @@ description: >-
   Task workflow CLI: add/list tasks under topics or nested parents,
   stage pipeline, notes/progress, tree view, channels. Use when the user
   manages work with tsk, asks for task trees, sub-tasks, or /tsk — or asks
-  to work on / finish a task via kck worker + independent verify
-  (see working-on-task). Load topics: tsk skill --show <topic>
+  to work on / finish a task via tsk + wrk + kck (see working-on-task).
+  Load topics: tsk skill --show <topic>
 ---
 
 # tsk — multi-topic task workflow skill
@@ -50,12 +50,12 @@ To run a task to finished without hand-holding each stage, see
 
 ## working-on-task
 
-When the user asks to **work on** / finish a task: clarify **intent**,
-**project**, **prerequisites**, **definition of done**, **verification
-steps**, and **artifacts**; after plan approval spawn a **`kck`** worker;
-main polls with `messages` / `snapshot`, verifies independently, then
-**done** or **blocked** report. Full playbook:
-`tsk skill --show working-on-task`. Stage details: `workflow`.
+When the user asks to **work on** / finish a task: **pick/approve** a task
+(`tsk show` or `tsk project tree --all`, prefer current project); clarify
+**project**, **intent kind**, and **E2E acceptance**; reuse a live linked
+worktree from `tsk show` or **`wrk`**-create; drive a **`kck`** worker; keep
+**`tsk`** stages and must-notes updated; verify; on user approve land with
+`wrk` then `tsk done`. Full playbook: `tsk skill --show working-on-task`.
 
 ## Topics
 
@@ -66,7 +66,7 @@ main polls with `messages` / `snapshot`, verifies independently, then
 - `install` — convenience wrappers (`tsk install pmark` → `~/.local/bin/pmark`)
 - `topic` — mkdir/set/rm/view/alias; `tsk update` for project/topic fields
 - `workflow` — stages, advance, clarify, followup, done, delete, status, next
-- `working-on-task` — intake → kck worker → poll → verify → report
+- `working-on-task` — tsk + wrk + kck daily playbook (clarify → worktree → worker → verify → ship)
 - `note` — notes and progress on existing tasks (see also `add --note`)
 - `channel` — Slack-like channels
 
