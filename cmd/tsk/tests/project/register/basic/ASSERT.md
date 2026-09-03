@@ -34,6 +34,8 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertContains(t, string(data), `"name": "seatalk"`)
 	assertContains(t, string(data), `"location":`)
+	assertContains(t, string(data), `"id": 1`)
+
 
 	jsonList := runTskOK(t, req, "project", "list", "--registered", "--json")
 	assertContains(t, jsonList.Stdout, `"location"`)

@@ -18,8 +18,10 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertContains(t, resp.Stdout, "tree")
 	assertContains(t, resp.Stdout, "list")
 	assertContains(t, resp.Stdout, "register")
+	assertContains(t, resp.Stdout, "notes")
 
 	rAdd := runTskCmd(t, req, "project", "add", "-h")
+
 	assertHelpOK(t, rAdd)
 	assertContains(t, rAdd.Stdout, "--project")
 	assertContains(t, rAdd.Stdout, "--dir")

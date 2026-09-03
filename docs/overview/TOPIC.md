@@ -14,6 +14,10 @@ Default root: `~/.tsk` (override with `TSK_HOME`).
 | Path | Role |
 |------|------|
 | `counter` | Monotonic task id allocator |
+| `project-counter` | Monotonic project id allocator (shared by both project ledgers) |
+| `projects.json` | Explicit project registry (`id`, name/origin/location) |
+| `projects-auto.json` | Auto-seen projects from `project add` / notes (shared `id` space) |
+| `projects/<id>/` | Project-scoped data (e.g. `notes.jsonl`) |
 | `index/<id>` | One-line relative path to the task directory |
 | `inbox/` | Tasks with `topic_path: null` |
 | `topics/<seg>/…` | Topic tree; may hold `topic.json`, notes, subtopics, tasks |

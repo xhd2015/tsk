@@ -76,6 +76,7 @@ Subcommands:
   which        print resolved origin/name/cwd for cwd/--dir
   register     register a project (optional --name; idempotent re-register)
   unregister   remove a registered project name
+  notes        list/add/edit/delete project-scoped notes
 
   -h, --help  show this help
 `
@@ -169,6 +170,88 @@ func projectUnregisterHelp() string {
 Remove a registered project name from projects.json.
 
   -h, --help  show this help
+`
+}
+
+func projectNotesHelp() string {
+	return `Usage: tsk project notes [list|add|edit|delete] [options]
+
+Project-scoped timestamped notes (notes.jsonl under TSK_HOME/projects/<id>/).
+Bare ` + "`tsk project notes`" + ` lists notes for the current project.
+
+Subcommands:
+  list     list notes (oldest first); default when no subcommand
+  add      append a note
+  edit     edit a note in place by --index
+  delete   delete a note by --index
+
+Resolve the project with --dir / --name / --project (same rules as project add).
+
+  -h, --help  show this help
+`
+}
+
+func projectNotesListHelp() string {
+	return `Usage: tsk project notes list [options]
+       tsk project notes [options]
+
+List project notes (oldest first).
+
+Flags:
+  --dir PATH       resolve project from PATH instead of cwd
+  --name NAME      registered project name
+  --project KEY    registered project name (same as --name)
+  --label LABEL    only notes that have this label (repeatable, AND);
+                   bare name matches name or name=*; key=value is exact
+  --show-index     prefix each note with 1-based index
+  --json           JSON array (no ANSI)
+  --limit N        last N notes only
+  -h, --help       show this help
+`
+}
+
+func projectNotesAddHelp() string {
+	return `Usage: tsk project notes add [options] <text...>
+
+Append a timestamped note to the current project.
+
+Flags:
+  --dir PATH       resolve project from PATH instead of cwd
+  --name NAME      registered project name
+  --project KEY    registered project name (same as --name)
+  --label LABEL    label for this note (repeatable); bare name or key=value
+  -h, --help       show this help
+`
+}
+
+func projectNotesEditHelp() string {
+	return `Usage: tsk project notes edit [options] --index N <text...>
+
+Edit a project note in place. Labels and ts are preserved.
+
+Flags:
+  --dir PATH       resolve project from PATH instead of cwd
+  --name NAME      registered project name
+  --project KEY    registered project name (same as --name)
+  --index N        1-based index into filtered notes (required)
+  --label LABEL    filter by label (repeatable, AND)
+  --append         append text instead of replacing
+  -h, --help       show this help
+`
+}
+
+func projectNotesDeleteHelp() string {
+	return `Usage: tsk project notes delete [options] --index N
+
+Delete a project note by 1-based index (within optional --label filter).
+
+Flags:
+  --dir PATH       resolve project from PATH instead of cwd
+  --name NAME      registered project name
+  --project KEY    registered project name (same as --name)
+  --index N        1-based index into filtered notes (required)
+  --label LABEL    filter by label (repeatable, AND)
+  -h, --help       show this help
 `
 }
 

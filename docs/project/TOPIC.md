@@ -21,6 +21,7 @@ tsk project list [--all|--auto|--registered] [--active] [--json]
 tsk project which [--dir PATH]
 tsk project register [--name NAME] [--cwd PATH] [--origin ORIGIN]
 tsk project unregister <name>
+tsk project notes [list|add|edit|delete] …
 ```
 
 `register` is idempotent: same name/location/origin → already up to date; empty
@@ -41,17 +42,19 @@ Even if a friendly name is registered for an origin, the **task** still stores
 
 ## Registry — `TSK_HOME/projects.json`
 
-Explicit register only. Origin-only projects need no row.
+Explicit register only. Origin-only projects need no row. Each row has a shared
+integer `id` (with `projects-auto.json`) from `project-counter`.
 
 ```json
 {
   "projects": [
-    { "origin": "github.com/xhd2015/dot-pkgs", "name": "dot-pkgs", "location": "~/Projects/xhd2015/dot-pkgs" },
-    { "name": "seatalk-local-bot", "location": "~/seatalk-local-bot" }
+    { "id": 1, "origin": "github.com/xhd2015/dot-pkgs", "name": "dot-pkgs", "location": "~/Projects/xhd2015/dot-pkgs" },
+    { "id": 2, "name": "seatalk-local-bot", "location": "~/seatalk-local-bot" }
   ]
 }
 ```
 
+- `id` unique across both ledgers; allocated on register / auto insert (reuse when the other file already has the same origin/name key)
 - `name` unique when set
 - `location` is the **main checkout** (git main worktree, else probe dir), tilde-form
 - legacy `cwd` on read is migrated into `location` and dropped on write
@@ -59,16 +62,32 @@ Explicit register only. Origin-only projects need no row.
 ## Auto ledger — `TSK_HOME/projects-auto.json`
 
 Written on every successful `project add` (upsert-only). Identity is `origin` XOR
-`name`. `location` is the **main repo** root (linked worktrees still record main),
-tilde-form, set once; later adds only bump `last_seen_at` (and fill `location`
-when empty). `tsk show` prints `project: <location>` when resolvable (else name,
-else origin), and task `cwd:` in tilde form when recorded.
+`name`. New rows get a shared `id`. `location` is the **main repo** root (linked
+worktrees still record main), tilde-form, set once; later adds only bump
+`last_seen_at` (and fill `location` when empty). `tsk show` prints
+`project: <location>` when resolvable (else name, else origin), and task `cwd:`
+in tilde form when recorded.
 
 `tsk project list` (default / `--all`): union of auto + registered as an aligned
 table (`NAME` `ORIGIN` `LOCATION` `TASKS`; registered-only rows show `0` until add).
 When `TASKS` is shown, rows sort by count descending (tie-break name, origin).
 `--auto` / `--registered` select one source; `--active` filters `tasks>0`.
 `--registered` omits the `TASKS` column unless `--active` (then name/origin order).
+
+## Project notes
+
+```text
+tsk project notes [--dir|--name|--project] …
+tsk project notes add [--label L]… <text…>
+tsk project notes edit --index N [--append] <text…>
+tsk project notes delete --index N
+```
+
+Notes live at `TSK_HOME/projects/<id>/notes.jsonl` (same `{ts,text,labels?}`
+journal as task/topic notes). Bare `notes` lists. Resolve uses the same origin /
+registered-name rules as `project add`. First notes access may upsert the auto
+ledger so an `id` exists. `project add --note` still writes **task** notes, not
+project notes.
 
 ## Placement / lifecycle
 

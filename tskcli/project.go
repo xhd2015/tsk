@@ -61,6 +61,8 @@ func runProject(home string, args []string) error {
 		return runProjectRegister(home, remaining[1:])
 	case "unregister":
 		return runProjectUnregister(home, remaining[1:])
+	case "notes":
+		return runProjectNotes(home, remaining[1:])
 	default:
 		return projectFail(fmt.Errorf("tsk project: unknown subcommand %q", remaining[0]))
 	}
@@ -323,7 +325,12 @@ func runProjectRegister(home string, args []string) error {
 	}
 
 	if idx < 0 {
+		id, aerr := storage.AllocateSharedProjectID(home, storage.ProjectRef{Origin: origin, Name: name})
+		if aerr != nil {
+			return projectFail(aerr)
+		}
 		entry := storage.ProjectEntry{
+			ID:       id,
 			Name:     name,
 			Location: locationTilde,
 			Origin:   origin,
@@ -352,6 +359,7 @@ func runProjectRegister(home string, args []string) error {
 	}
 
 	reg.Projects[idx] = storage.ProjectEntry{
+		ID:       existing.ID,
 		Name:     existing.Name,
 		Location: newLoc,
 		Origin:   newOrigin,

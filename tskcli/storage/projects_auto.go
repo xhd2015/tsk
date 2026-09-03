@@ -12,9 +12,10 @@ import (
 
 // ProjectAutoEntry is one row in TSK_HOME/projects-auto.json (add-/upsert-only).
 type ProjectAutoEntry struct {
-	Origin      string `json:"origin,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Location    string `json:"location,omitempty"` // main checkout, tilde form; set once
+	ID       int    `json:"id,omitempty"` // shared with projects.json
+	Origin   string `json:"origin,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Location string `json:"location,omitempty"` // main checkout, tilde form; set once
 	// Cwd is legacy-only: accepted on read, migrated into Location, never written.
 	Cwd         string `json:"cwd,omitempty"`
 	FirstSeenAt string `json:"first_seen_at"`
@@ -113,8 +114,8 @@ func normalizeProjectAutoEntry(e *ProjectAutoEntry) {
 }
 
 // UpsertProjectAuto inserts or updates an auto-seen project.
-// New rows set location/first/last; existing rows bump last_seen_at
-// and fill location when empty.
+// New rows set id (shared with projects.json), location/first/last; existing
+// rows bump last_seen_at, fill location when empty, and keep id.
 func UpsertProjectAuto(home string, ref ProjectRef, locationTilde string) error {
 	f, err := ReadProjectsAuto(home)
 	if err != nil {
@@ -132,7 +133,12 @@ func UpsertProjectAuto(home string, ref ProjectRef, locationTilde string) error 
 			return WriteProjectsAuto(home, f)
 		}
 	}
+	id, err := AllocateSharedProjectID(home, ref)
+	if err != nil {
+		return err
+	}
 	entry := ProjectAutoEntry{
+		ID:          id,
 		Origin:      ref.Origin,
 		Name:        ref.Name,
 		Location:    locationTilde,

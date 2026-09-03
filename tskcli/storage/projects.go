@@ -11,6 +11,7 @@ import (
 
 // ProjectEntry is one row in TSK_HOME/projects.json.
 type ProjectEntry struct {
+	ID       int    `json:"id,omitempty"` // shared with projects-auto.json
 	Origin   string `json:"origin,omitempty"`
 	Name     string `json:"name,omitempty"`
 	Location string `json:"location,omitempty"` // main checkout, tilde form

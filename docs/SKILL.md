@@ -62,7 +62,7 @@ worktree from `tsk show` or **`wrk`**-create; drive a **`kck`** worker; keep
 - `overview` — storage layout, dirname rules, env vars
 - `add` — inbox, topic, `--parent`, and one-shot `--note`
 - `tree` — full tree, `--id`, JSON/color/plain
-- `project` — project-scoped tasks + registry (`add`/`tree`/`list`/`register`)
+- `project` — project-scoped tasks + registry + notes (`add`/`tree`/`list`/`register`/`notes`)
 - `install` — convenience wrappers (`tsk install pmark` → `~/.local/bin/pmark`)
 - `topic` — mkdir/set/rm/view/alias; `tsk update` for project/topic fields
 - `workflow` — stages, advance, clarify, followup, done, delete, status, next
