@@ -626,11 +626,12 @@ type projectTreeJSONProject struct {
 }
 
 func runProjectTree(home string, args []string) error {
-	var nameFlag, projectFlag, stageFlag string
+	var nameFlag, projectFlag, stageFlag, dirFlag string
 	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain bool
 	remaining, err := lessflags.
 		String("--name", &nameFlag).
 		String("--project", &projectFlag).
+		String("--dir", &dirFlag).
 		String("--stage", &stageFlag).
 		Bool("--all", &allFlag).
 		Bool("--done", &doneFlag).
@@ -656,6 +657,9 @@ func runProjectTree(home string, args []string) error {
 	if stageFlag != "" && (doneFlag || archivedFlag) {
 		return projectFail(fmt.Errorf("tsk project tree: --stage conflicts with --done/--archived"))
 	}
+	if strings.TrimSpace(dirFlag) != "" && (nameFlag != "" || projectFlag != "" || allFlag) {
+		return projectFail(fmt.Errorf("tsk project tree: --dir conflicts with --name/--project/--all"))
+	}
 
 	reg, err := storage.ReadProjects(home)
 	if err != nil {
@@ -666,7 +670,7 @@ func runProjectTree(home string, args []string) error {
 	wantName := strings.TrimSpace(nameFlag)
 	var emptyBranch *projectGroup
 	if wantKey == "" && wantName == "" && !allFlag {
-		probeDir, err := resolveProbeDir("")
+		probeDir, err := resolveProbeDir(dirFlag)
 		if err != nil {
 			return projectFail(err)
 		}

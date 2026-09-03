@@ -99,12 +99,13 @@ Flags:
 }
 
 func projectTreeHelp() string {
-	return `Usage: tsk project tree [--name NAME | --project KEY] [--stage STAGE | --done] [--archived] [--all] [--color|--plain] [--json]
+	return `Usage: tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE | --done] [--archived] [--all] [--color|--plain] [--json]
 
 List project-scoped tasks as a tree (like tsk tree).
 Default: current cwd's project, non-terminal stages only.
 
 Flags:
+  --dir PATH      resolve project from PATH instead of cwd (conflicts with --name/--project/--all)
   --name NAME     filter by registry name / origin basename
   --project KEY   filter by origin key or registered name
   --stage STAGE   filter to one stage (conflicts with --done/--archived)

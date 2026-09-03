@@ -3,7 +3,7 @@
 - Help exits 0.
 - Root lists `add`, `tree`, `list`, `register`.
 - `add` documents `--project`.
-- `tree` documents `--all` / `--done` / `--archived` / `--json`.
+- `tree` documents `--dir` / `--all` / `--done` / `--archived` / `--json`.
 - `list` is registry list.
 
 ## Exit Code
@@ -26,6 +26,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 
 	rTree := runTskCmd(t, req, "project", "tree", "-h")
 	assertHelpOK(t, rTree)
+	assertContains(t, rTree.Stdout, "--dir")
 	assertContains(t, rTree.Stdout, "--all")
 	assertContains(t, rTree.Stdout, "--done")
 	assertContains(t, rTree.Stdout, "--archived")

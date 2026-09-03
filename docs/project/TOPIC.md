@@ -14,7 +14,7 @@ in the same `TSK_HOME` store; `mark` stays separate (no import). Shortcut:
 
 ```text
 tsk project add [--dir PATH] [--project NAME] [--note TEXT]... <title>
-tsk project tree [--name NAME | --project KEY] [--stage STAGE] [--all]
+tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE] [--all]
                  [--color|--plain] [--json]
 tsk project list [--all|--auto|--registered] [--active] [--json]
 tsk project which [--dir PATH]

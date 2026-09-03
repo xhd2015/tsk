@@ -243,6 +243,8 @@ tsk tests
 │   ├── which/basic/             # origin/name/cwd probe
 │   ├── tree/                    # project tree (task forest)
 │   │   ├── current/
+│   │   ├── dir/                 # --dir PATH resolves project (not cwd)
+│   │   ├── dir-missing/         # --dir bad path → Error
 │   │   ├── exclude-done/        # default active-only; --done/--archived/--all stage filters
 │   │   ├── all/
 │   │   └── empty/
