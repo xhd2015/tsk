@@ -1,6 +1,7 @@
 package tskcli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,12 +9,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/xhd2015/dot-pkgs/go-pkgs/git/scan_repo"
 	"github.com/xhd2015/dot-pkgs/go-pkgs/pathfmt"
 	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
+
+const projectTreeDefaultSubDirsDepth = 3
 
 func projectFail(err error) error {
 	if err == nil {
@@ -626,8 +631,8 @@ type projectTreeJSONProject struct {
 }
 
 func runProjectTree(home string, args []string) error {
-	var nameFlag, projectFlag, stageFlag, dirFlag string
-	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain bool
+	var nameFlag, projectFlag, stageFlag, dirFlag, subDirsDepthStr string
+	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain, noSubDirs bool
 	remaining, err := lessflags.
 		String("--name", &nameFlag).
 		String("--project", &projectFlag).
@@ -636,6 +641,8 @@ func runProjectTree(home string, args []string) error {
 		Bool("--all", &allFlag).
 		Bool("--done", &doneFlag).
 		Bool("--archived", &archivedFlag).
+		Bool("--no-sub-dirs", &noSubDirs).
+		String("--sub-dirs-depth", &subDirsDepthStr).
 		Bool("--json", &asJSON).
 		Bool("--color", &colorFlag).
 		Bool("--plain", &plain).
@@ -660,6 +667,21 @@ func runProjectTree(home string, args []string) error {
 	if strings.TrimSpace(dirFlag) != "" && (nameFlag != "" || projectFlag != "" || allFlag) {
 		return projectFail(fmt.Errorf("tsk project tree: --dir conflicts with --name/--project/--all"))
 	}
+	if noSubDirs && subDirsDepthStr != "" {
+		return projectFail(fmt.Errorf("tsk project tree: --no-sub-dirs conflicts with --sub-dirs-depth"))
+	}
+	subDirsDepth := projectTreeDefaultSubDirsDepth
+	if subDirsDepthStr != "" {
+		n, perr := strconv.Atoi(subDirsDepthStr)
+		if perr != nil || n <= 0 {
+			return projectFail(fmt.Errorf("tsk project tree: --sub-dirs-depth must be >= 1"))
+		}
+		subDirsDepth = n
+	}
+	explicitFilter := nameFlag != "" || projectFlag != "" || allFlag
+	if explicitFilter && (noSubDirs || subDirsDepthStr != "") {
+		return projectFail(fmt.Errorf("tsk project tree: --no-sub-dirs/--sub-dirs-depth conflict with --all/--name/--project"))
+	}
 
 	reg, err := storage.ReadProjects(home)
 	if err != nil {
@@ -669,6 +691,7 @@ func runProjectTree(home string, args []string) error {
 	wantKey := strings.TrimSpace(projectFlag)
 	wantName := strings.TrimSpace(nameFlag)
 	var emptyBranch *projectGroup
+	var allowedKeys map[string]struct{}
 	if wantKey == "" && wantName == "" && !allFlag {
 		probeDir, err := resolveProbeDir(dirFlag)
 		if err != nil {
@@ -685,6 +708,18 @@ func runProjectTree(home string, args []string) error {
 		} else {
 			return projectFail(fmt.Errorf("tsk project tree: no git origin and not registered (see tsk project register --help)"))
 		}
+
+		if !noSubDirs {
+			allowedKeys = map[string]struct{}{emptyBranch.Key: {}}
+			nearby, scanErr := discoverNearbyProjectKeys(projectTreeScanRoot(probeDir), subDirsDepth, reg)
+			if scanErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: project tree: git scan: %v\n", scanErr)
+			} else {
+				for k := range nearby {
+					allowedKeys[k] = struct{}{}
+				}
+			}
+		}
 	}
 
 	entries, err := loadProjectTasks(home)
@@ -694,7 +729,11 @@ func runProjectTree(home string, args []string) error {
 
 	var filtered []projectTaskEntry
 	for _, e := range entries {
-		if !taskMatchesProjectFilter(e.Task, wantKey, wantName, reg) {
+		if allowedKeys != nil {
+			if !taskMatchesProjectKeySet(e.Task, allowedKeys) {
+				continue
+			}
+		} else if !taskMatchesProjectFilter(e.Task, wantKey, wantName, reg) {
 			continue
 		}
 		if !projectTreeStageAllowed(e.Task.Stage, stageFlag, doneFlag, archivedFlag, allFlag) {
@@ -704,7 +743,7 @@ func runProjectTree(home string, args []string) error {
 	}
 
 	groups := groupProjectTasks(filtered, reg)
-	if wantName != "" && wantKey == "" {
+	if strings.TrimSpace(nameFlag) != "" && wantKey == "" {
 		keys := make([]string, 0, len(groups))
 		for k := range groups {
 			keys = append(keys, k)
@@ -714,8 +753,10 @@ func runProjectTree(home string, args []string) error {
 		}
 	}
 
-	if emptyBranch != nil && len(groups) == 0 {
-		groups = map[string]*projectGroup{emptyBranch.Key: emptyBranch}
+	if emptyBranch != nil {
+		if _, ok := groups[emptyBranch.Key]; !ok {
+			groups[emptyBranch.Key] = emptyBranch
+		}
 	}
 
 	color := treeColorEnabled(colorFlag, plain, asJSON)
@@ -735,6 +776,61 @@ func runProjectTree(home string, args []string) error {
 	fancy := !plain && isStdoutTTY()
 	fmt.Print(formatProjectTree(groups, color, fancy))
 	return nil
+}
+
+func taskMatchesProjectKeySet(task storage.Task, keys map[string]struct{}) bool {
+	if task.Project == nil || len(keys) == 0 {
+		return false
+	}
+	_, ok := keys[projectGroupKey(task.Project)]
+	return ok
+}
+
+// projectTreeScanRoot prefers the git toplevel of probeDir, else probeDir.
+func projectTreeScanRoot(probeDir string) string {
+	if top, err := gitShowToplevel(probeDir); err == nil && top != "" {
+		return top
+	}
+	return probeDir
+}
+
+func gitShowToplevel(dir string) (string, error) {
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	top := strings.TrimSpace(string(out))
+	if top == "" {
+		return "", fmt.Errorf("empty toplevel")
+	}
+	return filepath.Clean(top), nil
+}
+
+// discoverNearbyProjectKeys scans for git checkouts under root (maxDepth) and
+// maps each to a project group key (origin or name:<registered>).
+func discoverNearbyProjectKeys(root string, maxDepth int, reg storage.ProjectsFile) (map[string]struct{}, error) {
+	result, err := scan_repo.Scan(context.Background(), scan_repo.Options{
+		Roots:    []string{root},
+		MaxDepth: maxDepth,
+	})
+	if err != nil {
+		return nil, err
+	}
+	keys := make(map[string]struct{})
+	for _, repo := range result.Repos {
+		if repo.Error != "" || repo.Path == "" {
+			continue
+		}
+		if origin, oerr := gitNormalizedOrigin(repo.Path); oerr == nil && origin != "" {
+			keys[origin] = struct{}{}
+			continue
+		}
+		if entry, ok := findRegistryByAbsCwd(reg, repo.Path); ok && entry.Name != "" {
+			keys["name:"+entry.Name] = struct{}{}
+		}
+	}
+	return keys, nil
 }
 
 // projectTreeStageAllowed applies project-tree stage visibility:

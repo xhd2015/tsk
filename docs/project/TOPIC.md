@@ -15,6 +15,7 @@ in the same `TSK_HOME` store; `mark` stays separate (no import). Shortcut:
 ```text
 tsk project add [--dir PATH] [--project NAME] [--note TEXT]... <title>
 tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE] [--all]
+                 [--no-sub-dirs | --sub-dirs-depth N]
                  [--color|--plain] [--json]
 tsk project list [--all|--auto|--registered] [--active] [--json]
 tsk project which [--dir PATH]
@@ -75,7 +76,16 @@ tsk update <id> --clear-project
 
 ## Tree
 
-Like `tsk tree`. Default: current project, non-terminal stages only.
+Like `tsk tree`. Default: current project **plus** projects discovered by a
+git-repo scan under the scan root (git toplevel of cwd/`--dir` when available,
+else that probe dir) at max depth **3**, non-terminal stages only. Nested
+checkouts (e.g. `external/dot-pkgs`) map via origin or registered cwd. Empty
+discovered projects are omitted; the current project branch is kept even when
+empty. `--dir PATH` resolves the project from PATH instead of cwd (conflicts
+with `--name`/`--project`/`--all`). `--no-sub-dirs` disables the scan;
+`--sub-dirs-depth N` overrides depth (`N >= 1`). Those two flags conflict with
+each other and with `--all` / `--name` / `--project`.
+
 `--done` / `--archived` filter to those stages (both ⇒ union). `--all` shows
 every project and every stage (narrow with `--done`/`--archived`). `--stage`
 filters to one stage and conflicts with `--done`/`--archived`.

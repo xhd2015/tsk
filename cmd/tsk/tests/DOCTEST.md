@@ -23,7 +23,7 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **events.jsonl** — append-only audit log; one JSON object per CLI invocation (success or failure).
 - **Task directory** — name `[id]-<slug>/` under `inbox/` (no topic), `topics/<path>/` (topic tree), or nested under a parent task dir; contains `task.json`, `context/` (empty on create), and `clarify/` (during clarification with `batch.json`).
 - **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), optional `parent_id` (nested sub-tasks), optional `cwd` (CLI recording directory), optional `project` `{id,name}` (canonical origin key + basename), `stage`, `created_at`, `updated_at`, `stage_history`.
-- **project** — `tsk project add|tree|list|which|register|unregister`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json`; auto ledger `projects-auto.json` (upsert on add; main-repo `cwd`; local-TZ `first_seen_at`/`last_seen_at`). `list` default/`--all` = union auto+registered with `tasks=`; `--auto` / `--registered` select one source; `--active` filters. `tree` = task forest. No mark import.
+- **project** — `tsk project add|tree|list|which|register|unregister`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json`; auto ledger `projects-auto.json` (upsert on add; main-repo `cwd`; local-TZ `first_seen_at`/`last_seen_at`). `list` default/`--all` = union auto+registered with `tasks=`; `--auto` / `--registered` select one source; `--active` filters. `tree` = task forest; default also scans nested git dirs (max depth 3) via `scan_repo` and unions those projects (`--no-sub-dirs` / `--sub-dirs-depth N`). No mark import.
 - **add --parent** — `tsk add --parent <id> <title>` nests under the parent task directory (any depth); child inherits parent `topic_path`; mutually exclusive with `--topic`.
 - **Slug** — lowercase, non-letter-digit → `-`, collapse, trim, max 64 runes; immutable after create.
 - **Stage workflow** — `create → in_process → clarification → implementation → verification → summary → user_followup (loop to clarification) OR done`; `archived` is an alternate off-spine terminal. `done` and `archived` are terminal.
@@ -247,7 +247,8 @@ tsk tests
 │   │   ├── dir-missing/         # --dir bad path → Error
 │   │   ├── exclude-done/        # default active-only; --done/--archived/--all stage filters
 │   │   ├── all/
-│   │   └── empty/
+│   │   ├── empty/
+│   │   └── sub-dirs/            # nested git scan (default depth 3; --no-sub-dirs / --sub-dirs-depth)
 │   ├── list/                    # project list (all/auto/registered)
 │   │   ├── empty/
 │   │   ├── after-add/           # auto row with tasks=

@@ -99,23 +99,27 @@ Flags:
 }
 
 func projectTreeHelp() string {
-	return `Usage: tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE | --done] [--archived] [--all] [--color|--plain] [--json]
+	return `Usage: tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE | --done] [--archived] [--all]
+                  [--no-sub-dirs | --sub-dirs-depth N] [--color|--plain] [--json]
 
 List project-scoped tasks as a tree (like tsk tree).
-Default: current cwd's project, non-terminal stages only.
+Default: current cwd's project plus projects from nested git repos under the
+scan root (git toplevel or cwd/--dir, max depth 3), non-terminal stages only.
 
 Flags:
-  --dir PATH      resolve project from PATH instead of cwd (conflicts with --name/--project/--all)
-  --name NAME     filter by registry name / origin basename
-  --project KEY   filter by origin key or registered name
-  --stage STAGE   filter to one stage (conflicts with --done/--archived)
-  --done          show only done tasks
-  --archived      show only archived tasks (--done --archived shows both)
-  --all           all projects and all stages (narrow with --done/--archived)
-  --color         force ANSI stage styling (no trailing stage text)
-  --plain         force no ANSI; show  (stage); ASCII markers
-  --json          emit structured JSON instead of the tree
-  -h, --help      show this help
+  --dir PATH           resolve project from PATH instead of cwd (conflicts with --name/--project/--all)
+  --name NAME          filter by registry name / origin basename
+  --project KEY        filter by origin key or registered name
+  --stage STAGE        filter to one stage (conflicts with --done/--archived)
+  --done               show only done tasks
+  --archived           show only archived tasks (--done --archived shows both)
+  --all                all projects and all stages (narrow with --done/--archived)
+  --no-sub-dirs        do not scan nested git dirs for other projects
+  --sub-dirs-depth N   max scan depth under scan root (default 3; must be >= 1)
+  --color              force ANSI stage styling (no trailing stage text)
+  --plain              force no ANSI; show  (stage); ASCII markers
+  --json               emit structured JSON instead of the tree
+  -h, --help           show this help
 `
 }
 
