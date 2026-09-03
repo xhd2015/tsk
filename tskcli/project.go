@@ -632,7 +632,7 @@ type projectTreeJSONProject struct {
 
 func runProjectTree(home string, args []string) error {
 	var nameFlag, projectFlag, stageFlag, dirFlag, subDirsDepthStr string
-	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain, noSubDirs bool
+	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain, noSubDirs, streamingFlag, noStreamingFlag bool
 	remaining, err := lessflags.
 		String("--name", &nameFlag).
 		String("--project", &projectFlag).
@@ -643,6 +643,8 @@ func runProjectTree(home string, args []string) error {
 		Bool("--archived", &archivedFlag).
 		Bool("--no-sub-dirs", &noSubDirs).
 		String("--sub-dirs-depth", &subDirsDepthStr).
+		Bool("--streaming", &streamingFlag).
+		Bool("--no-streaming", &noStreamingFlag).
 		Bool("--json", &asJSON).
 		Bool("--color", &colorFlag).
 		Bool("--plain", &plain).
@@ -682,6 +684,15 @@ func runProjectTree(home string, args []string) error {
 	if explicitFilter && (noSubDirs || subDirsDepthStr != "") {
 		return projectFail(fmt.Errorf("tsk project tree: --no-sub-dirs/--sub-dirs-depth conflict with --all/--name/--project"))
 	}
+	if streamingFlag && noStreamingFlag {
+		return projectFail(fmt.Errorf("tsk project tree: --streaming conflicts with --no-streaming"))
+	}
+	if streamingFlag && asJSON {
+		return projectFail(fmt.Errorf("tsk project tree: --streaming conflicts with --json"))
+	}
+	if streamingFlag && explicitFilter {
+		return projectFail(fmt.Errorf("tsk project tree: --streaming conflicts with --all/--name/--project"))
+	}
 
 	reg, err := storage.ReadProjects(home)
 	if err != nil {
@@ -691,9 +702,9 @@ func runProjectTree(home string, args []string) error {
 	wantKey := strings.TrimSpace(projectFlag)
 	wantName := strings.TrimSpace(nameFlag)
 	var emptyBranch *projectGroup
-	var allowedKeys map[string]struct{}
+	var probeDir string
 	if wantKey == "" && wantName == "" && !allFlag {
-		probeDir, err := resolveProbeDir(dirFlag)
+		probeDir, err = resolveProbeDir(dirFlag)
 		if err != nil {
 			return projectFail(err)
 		}
@@ -708,23 +719,33 @@ func runProjectTree(home string, args []string) error {
 		} else {
 			return projectFail(fmt.Errorf("tsk project tree: no git origin and not registered (see tsk project register --help)"))
 		}
-
-		if !noSubDirs {
-			allowedKeys = map[string]struct{}{emptyBranch.Key: {}}
-			nearby, scanErr := discoverNearbyProjectKeys(projectTreeScanRoot(probeDir), subDirsDepth, reg)
-			if scanErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: project tree: git scan: %v\n", scanErr)
-			} else {
-				for k := range nearby {
-					allowedKeys[k] = struct{}{}
-				}
-			}
-		}
 	}
 
 	entries, err := loadProjectTasks(home)
 	if err != nil {
 		return err
+	}
+
+	color := treeColorEnabled(colorFlag, plain, asJSON)
+	fancy := !plain && isStdoutTTY()
+
+	// Default human scan mode streams; --no-streaming buffers; --json / filters stay buffered.
+	useStreaming := !asJSON && !explicitFilter && emptyBranch != nil && !noStreamingFlag
+	if useStreaming {
+		return runProjectTreeStream(reg, emptyBranch, probeDir, entries, stageFlag, doneFlag, archivedFlag, allFlag, noSubDirs, subDirsDepth, color, fancy)
+	}
+
+	var allowedKeys map[string]struct{}
+	if emptyBranch != nil && !noSubDirs {
+		allowedKeys = map[string]struct{}{emptyBranch.Key: {}}
+		nearby, scanErr := discoverNearbyProjectKeys(projectTreeScanRoot(probeDir), subDirsDepth, reg)
+		if scanErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: project tree: git scan: %v\n", scanErr)
+		} else {
+			for k := range nearby {
+				allowedKeys[k] = struct{}{}
+			}
+		}
 	}
 
 	var filtered []projectTaskEntry
@@ -753,16 +774,17 @@ func runProjectTree(home string, args []string) error {
 		}
 	}
 
+	rootKey := ""
 	if emptyBranch != nil {
+		rootKey = emptyBranch.Key
 		if _, ok := groups[emptyBranch.Key]; !ok {
 			groups[emptyBranch.Key] = emptyBranch
 		}
 	}
 
-	color := treeColorEnabled(colorFlag, plain, asJSON)
 	if asJSON {
 		out := projectTreeJSON{Projects: make([]projectTreeJSONProject, 0, len(groups))}
-		for _, g := range sortedProjectGroups(groups) {
+		for _, g := range orderedProjectGroups(groups, rootKey) {
 			out.Projects = append(out.Projects, projectTreeJSONProject{
 				Key:   g.Key,
 				Label: g.Label,
@@ -773,9 +795,131 @@ func runProjectTree(home string, args []string) error {
 		enc.SetEscapeHTML(false)
 		return enc.Encode(out)
 	}
-	fancy := !plain && isStdoutTTY()
-	fmt.Print(formatProjectTree(groups, color, fancy))
+	fmt.Print(formatProjectTree(groups, rootKey, color, fancy))
 	return nil
+}
+
+func runProjectTreeStream(
+	reg storage.ProjectsFile,
+	root *projectGroup,
+	probeDir string,
+	entries []projectTaskEntry,
+	stageFlag string,
+	doneFlag, archivedFlag, allFlag, noSubDirs bool,
+	subDirsDepth int,
+	color, fancy bool,
+) error {
+	if root == nil {
+		return projectFail(fmt.Errorf("tsk project tree: --streaming requires current project resolution"))
+	}
+
+	byKey := map[string]*projectGroup{}
+	for _, e := range entries {
+		if !projectTreeStageAllowed(e.Task.Stage, stageFlag, doneFlag, archivedFlag, allFlag) {
+			continue
+		}
+		key := projectGroupKey(e.Task.Project)
+		g, ok := byKey[key]
+		if !ok {
+			g = &projectGroup{
+				Key:   key,
+				Label: displayLabelForRef(reg, e.Task.Project),
+			}
+			byKey[key] = g
+		}
+		g.Tasks = append(g.Tasks, e)
+	}
+	if _, ok := byKey[root.Key]; !ok {
+		byKey[root.Key] = &projectGroup{Key: root.Key, Label: root.Label}
+	}
+
+	fmt.Fprint(os.Stdout, ".\n")
+	_ = os.Stdout.Sync()
+
+	printed := map[string]struct{}{root.Key: {}}
+	willScan := !noSubDirs
+	taskCount := writeProjectBranch(os.Stdout, byKey[root.Key], !willScan, color, fancy)
+	projectCount := 1
+	_ = os.Stdout.Sync()
+
+	var pending *projectGroup
+	flushPending := func(last bool) {
+		if pending == nil {
+			return
+		}
+		taskCount += writeProjectBranch(os.Stdout, pending, last, color, fancy)
+		projectCount++
+		_ = os.Stdout.Sync()
+		pending = nil
+	}
+
+	if willScan {
+		scanRoot := projectTreeScanRoot(probeDir)
+		_, scanErr := scan_repo.Scan(context.Background(), scan_repo.Options{
+			Roots:    []string{scanRoot},
+			MaxDepth: subDirsDepth,
+			OnRepo: func(repo scan_repo.Repo) error {
+				if repo.Error != "" || repo.Path == "" {
+					return nil
+				}
+				key, label := projectKeyFromRepoPath(repo.Path, reg)
+				if key == "" {
+					return nil
+				}
+				if _, ok := printed[key]; ok {
+					return nil
+				}
+				if pending != nil && pending.Key == key {
+					return nil
+				}
+				g := byKey[key]
+				if g == nil || len(g.Tasks) == 0 {
+					return nil
+				}
+				if g.Label == "" {
+					g.Label = label
+				}
+				printed[key] = struct{}{}
+				flushPending(false)
+				pending = g
+				return nil
+			},
+		})
+		if scanErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: project tree: git scan: %v\n", scanErr)
+		}
+		flushPending(true)
+	}
+
+	fmt.Fprint(os.Stdout, formatProjectTreeFooter(taskCount, projectCount))
+	return nil
+}
+
+// writeProjectBranch writes one root-level project node; returns task count.
+func writeProjectBranch(w *os.File, g *projectGroup, last, color, fancy bool) int {
+	tree := buildProjectTaskTree(g.Tasks)
+	idWidth := maxTaskIDWidth(tree)
+	mark := projectMark(fancy)
+	short, origin := splitProjectDisplayLabel(g.Label)
+	node := &renderNode{
+		name:  mark + short,
+		extra: formatProjectOriginExtra(origin, color),
+	}
+	node.children = projectTasksToRender(tree, color, idWidth)
+	var b strings.Builder
+	writeRenderKid(&b, node, "", last)
+	fmt.Fprint(w, b.String())
+	return countProjectTreeTasks(tree)
+}
+
+func projectKeyFromRepoPath(path string, reg storage.ProjectsFile) (key, label string) {
+	if origin, err := gitNormalizedOrigin(path); err == nil && origin != "" {
+		return origin, displayLabelForOrigin(reg, origin)
+	}
+	if entry, ok := findRegistryByAbsCwd(reg, path); ok && entry.Name != "" {
+		return "name:" + entry.Name, entry.Name
+	}
+	return "", ""
 }
 
 func taskMatchesProjectKeySet(task storage.Task, keys map[string]struct{}) bool {
@@ -977,6 +1121,27 @@ func sortedProjectGroups(groups map[string]*projectGroup) []*projectGroup {
 	return out
 }
 
+// orderedProjectGroups returns rootKey first (when present), then label-sorted rest.
+func orderedProjectGroups(groups map[string]*projectGroup, rootKey string) []*projectGroup {
+	ordered := sortedProjectGroups(groups)
+	if rootKey == "" {
+		return ordered
+	}
+	var root *projectGroup
+	rest := make([]*projectGroup, 0, len(ordered))
+	for _, g := range ordered {
+		if g.Key == rootKey {
+			root = g
+			continue
+		}
+		rest = append(rest, g)
+	}
+	if root == nil {
+		return ordered
+	}
+	return append([]*projectGroup{root}, rest...)
+}
+
 func buildProjectTaskTree(entries []projectTaskEntry) []storage.TopicTreeTask {
 	byID := make(map[int]projectTaskEntry, len(entries))
 	for _, e := range entries {
@@ -1021,10 +1186,10 @@ func buildProjectTaskTree(entries []projectTaskEntry) []storage.TopicTreeTask {
 	return out
 }
 
-func formatProjectTree(groups map[string]*projectGroup, color, fancy bool) string {
+func formatProjectTree(groups map[string]*projectGroup, rootKey string, color, fancy bool) string {
 	var b strings.Builder
 	b.WriteString(".\n")
-	ordered := sortedProjectGroups(groups)
+	ordered := orderedProjectGroups(groups, rootKey)
 	if len(ordered) == 0 {
 		b.WriteString("(empty)\n")
 		b.WriteString("0 tasks, 0 projects\n")
@@ -1055,17 +1220,20 @@ func formatProjectTree(groups map[string]*projectGroup, color, fancy bool) strin
 		rootKids = append(rootKids, node)
 	}
 	writeRenderKids(&b, rootKids, "")
+	b.WriteString(formatProjectTreeFooter(taskCount, len(ordered)))
+	return b.String()
+}
 
+func formatProjectTreeFooter(taskCount, projectCount int) string {
 	taskWord := "tasks"
 	if taskCount == 1 {
 		taskWord = "task"
 	}
 	projectWord := "projects"
-	if len(ordered) == 1 {
+	if projectCount == 1 {
 		projectWord = "project"
 	}
-	b.WriteString(fmt.Sprintf("\n%d %s, %d %s\n", taskCount, taskWord, len(ordered), projectWord))
-	return b.String()
+	return fmt.Sprintf("\n%d %s, %d %s\n", taskCount, taskWord, projectCount, projectWord)
 }
 
 func countProjectTreeTasks(tasks []storage.TopicTreeTask) int {

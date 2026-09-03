@@ -100,11 +100,14 @@ Flags:
 
 func projectTreeHelp() string {
 	return `Usage: tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE | --done] [--archived] [--all]
-                  [--no-sub-dirs | --sub-dirs-depth N] [--color|--plain] [--json]
+                  [--no-sub-dirs | --sub-dirs-depth N] [--streaming|--no-streaming]
+                  [--color|--plain] [--json]
 
 List project-scoped tasks as a tree (like tsk tree).
 Default: current cwd's project plus projects from nested git repos under the
 scan root (git toplevel or cwd/--dir, max depth 3), non-terminal stages only.
+Human default mode streams: root project first, then each discovered project
+as found. --no-streaming buffers then prints (root first, rest label-sorted).
 
 Flags:
   --dir PATH           resolve project from PATH instead of cwd (conflicts with --name/--project/--all)
@@ -116,6 +119,8 @@ Flags:
   --all                all projects and all stages (narrow with --done/--archived)
   --no-sub-dirs        do not scan nested git dirs for other projects
   --sub-dirs-depth N   max scan depth under scan root (default 3; must be >= 1)
+  --streaming          stream output (default for human scan mode)
+  --no-streaming       buffer the full tree, then print once
   --color              force ANSI stage styling (no trailing stage text)
   --plain              force no ANSI; show  (stage); ASCII markers
   --json               emit structured JSON instead of the tree

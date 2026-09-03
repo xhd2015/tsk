@@ -243,25 +243,28 @@ func buildTopicChain(home string, parts []string, fancy bool) *renderNode {
 
 func writeRenderKids(b *strings.Builder, kids []*renderNode, prefix string) {
 	for i, kid := range kids {
-		last := i == len(kids)-1
-		branch, next := "├── ", "│   "
-		if last {
-			branch, next = "└── ", "    "
-		}
-		b.WriteString(prefix)
-		b.WriteString(branch)
-		if kid.style != "" {
-			b.WriteString(kid.style)
-		}
-		b.WriteString(kid.name)
-		b.WriteString(kid.extra)
-		if kid.style != "" {
-			b.WriteString(ansiReset)
-		}
-		b.WriteByte('\n')
-		if len(kid.children) > 0 {
-			writeRenderKids(b, kid.children, prefix+next)
-		}
+		writeRenderKid(b, kid, prefix, i == len(kids)-1)
+	}
+}
+
+func writeRenderKid(b *strings.Builder, kid *renderNode, prefix string, last bool) {
+	branch, next := "├── ", "│   "
+	if last {
+		branch, next = "└── ", "    "
+	}
+	b.WriteString(prefix)
+	b.WriteString(branch)
+	if kid.style != "" {
+		b.WriteString(kid.style)
+	}
+	b.WriteString(kid.name)
+	b.WriteString(kid.extra)
+	if kid.style != "" {
+		b.WriteString(ansiReset)
+	}
+	b.WriteByte('\n')
+	if len(kid.children) > 0 {
+		writeRenderKids(b, kid.children, prefix+next)
 	}
 }
 

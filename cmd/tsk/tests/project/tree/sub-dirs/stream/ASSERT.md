@@ -1,9 +1,8 @@
 ## Expected
 
 - Exit 0.
-- `root-repo` appears **before** `nested-repo` (root-first buffered order).
-- `idle-repo` / `deep-repo` absent.
-- Footer `2 tasks, 2 projects`.
+- Root project appears before nested.
+- Idle/deep omitted; footer `2 tasks, 2 projects`.
 
 ## Exit Code
 
@@ -18,20 +17,15 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 		t.Fatalf("exit %d stderr=%q", resp.ExitCode, resp.Stderr)
 	}
 	assertNoANSI(t, resp.Stdout)
-	assertContains(t, resp.Stdout, "root-repo  github.com/example/root-repo")
-	assertContains(t, resp.Stdout, "nested-repo  github.com/example/nested-repo")
 	rootIdx := strings.Index(resp.Stdout, "root-repo  github.com/example/root-repo")
 	nestedIdx := strings.Index(resp.Stdout, "nested-repo  github.com/example/nested-repo")
 	if rootIdx < 0 || nestedIdx < 0 || rootIdx > nestedIdx {
-		t.Fatalf("want root-repo before nested-repo: root=%d nested=%d out=%q", rootIdx, nestedIdx, resp.Stdout)
+		t.Fatalf("want root before nested: root=%d nested=%d out=%q", rootIdx, nestedIdx, resp.Stdout)
 	}
 	assertContains(t, resp.Stdout, "from-root")
 	assertContains(t, resp.Stdout, "from-nested")
-	if strings.Contains(resp.Stdout, "idle-repo") {
-		t.Fatalf("idle-repo should be omitted: %q", resp.Stdout)
-	}
-	if strings.Contains(resp.Stdout, "deep-repo") {
-		t.Fatalf("deep-repo beyond depth 3 should be omitted: %q", resp.Stdout)
+	if strings.Contains(resp.Stdout, "idle-repo") || strings.Contains(resp.Stdout, "deep-repo") {
+		t.Fatalf("unexpected idle/deep in stream output: %q", resp.Stdout)
 	}
 	assertContains(t, resp.Stdout, "2 tasks, 2 projects")
 }

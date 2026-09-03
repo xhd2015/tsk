@@ -33,6 +33,8 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertContains(t, rTree.Stdout, "--json")
 	assertContains(t, rTree.Stdout, "--no-sub-dirs")
 	assertContains(t, rTree.Stdout, "--sub-dirs-depth")
+	assertContains(t, rTree.Stdout, "--streaming")
+	assertContains(t, rTree.Stdout, "--no-streaming")
 
 	rList := runTskCmd(t, req, "project", "list", "-h")
 	assertHelpOK(t, rList)
