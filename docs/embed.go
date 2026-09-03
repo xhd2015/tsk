@@ -30,4 +30,5 @@ var SkillMD string
 //go:embed channel
 //go:embed project
 //go:embed install
+//go:embed working-on-task
 var TreeFS embed.FS

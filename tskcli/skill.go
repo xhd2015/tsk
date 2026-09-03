@@ -29,10 +29,13 @@ func skillHelp() string {
 	return `Usage: tsk skill --show [--header] [<topic-path>]
        tsk skill <topic-path> --show [--header]
        tsk skill --install [OPTIONS] [<dir>]
+       tsk skill <topic-path> --install [OPTIONS] [<dir>]
        tsk skill --list
 
 Show the root SKILL.md index or a nested topic (path/TOPIC.md).
 Install copies SKILL.md and nested TOPIC.md topics into agent skill directories.
+A leading <topic-path> before --install is not a destination (whole skill is
+installed); pass --dir or <dir> for the target.
 List prints the skill name and every available topic path.
 --help also lists available topics (see below).
 
@@ -40,8 +43,11 @@ Examples:
   tsk skill --show
   tsk skill --show add
   tsk skill add --show
+  tsk skill --show working-on-task
   tsk skill --list
   tsk skill --install --dry-run
+  tsk skill --install --dir ~/skills --dry-run
+  tsk skill working-on-task --install --dir ~/skills --dry-run
   tsk skill --install --help
 
 Options:

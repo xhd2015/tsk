@@ -10,11 +10,11 @@ require (
 require (
 	github.com/mattn/go-shellwords v1.0.14
 	github.com/xhd2015/dot-pkgs/go-pkgs v0.0.162
-	github.com/xhd2015/skills v0.0.30
+	github.com/xhd2015/skills v0.0.31
 )
 
 require (
-	github.com/xhd2015/less-gen v0.0.19 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

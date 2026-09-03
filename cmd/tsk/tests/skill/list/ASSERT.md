@@ -14,6 +14,7 @@ project
 topic
 tree
 workflow
+working-on-task
 ```
 
 ## Exit Code
@@ -45,6 +46,7 @@ project
 topic
 tree
 workflow
+working-on-task
 `)
 }
 ```

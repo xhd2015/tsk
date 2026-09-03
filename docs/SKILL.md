@@ -3,8 +3,9 @@ name: tsk
 description: >-
   Task workflow CLI: add/list tasks under topics or nested parents,
   stage pipeline, notes/progress, tree view, channels. Use when the user
-  manages work with tsk, asks for task trees, sub-tasks, or /tsk.
-  Load topics: tsk skill --show <topic>
+  manages work with tsk, asks for task trees, sub-tasks, or /tsk — or asks
+  to work on / finish a task via kck worker + independent verify
+  (see working-on-task). Load topics: tsk skill --show <topic>
 ---
 
 # tsk — multi-topic task workflow skill
@@ -15,7 +16,7 @@ This skill is an **index**. Load detailed guidance with
 **tsk** stores tasks under `TSK_HOME` (default `~/.tsk`). Topics classify work;
 tasks are directories that can nest as sub-tasks. Domain commands remain
 `tsk add`, `tsk tree`, `tsk note`, and so on — this skill documents the
-product model and agent workflows.
+product model and agent workflows (manual use and autonomous working-on-task).
 
 ## Core model (agents)
 
@@ -44,6 +45,18 @@ product model and agent workflows.
 6. To attach an existing task to a project or move/clear its topic: `tsk update <id> …`.
    Remove an empty topic with `tsk topic rm <path>` (refuses if any task remains).
 
+To run a task to finished without hand-holding each stage, see
+**working-on-task** below (`tsk skill --show working-on-task`).
+
+## working-on-task
+
+When the user asks to **work on** / finish a task: clarify **intent**,
+**project**, **prerequisites**, **definition of done**, **verification
+steps**, and **artifacts**; after plan approval spawn a **`kck`** worker;
+main polls with `messages` / `snapshot`, verifies independently, then
+**done** or **blocked** report. Full playbook:
+`tsk skill --show working-on-task`. Stage details: `workflow`.
+
 ## Topics
 
 - `overview` — storage layout, dirname rules, env vars
@@ -53,6 +66,7 @@ product model and agent workflows.
 - `install` — convenience wrappers (`tsk install pmark` → `~/.local/bin/pmark`)
 - `topic` — mkdir/set/rm/view/alias; `tsk update` for project/topic fields
 - `workflow` — stages, advance, clarify, followup, done, delete, status, next
+- `working-on-task` — intake → kck worker → poll → verify → report
 - `note` — notes and progress on existing tasks (see also `add --note`)
 - `channel` — Slack-like channels
 
@@ -69,6 +83,7 @@ tsk skill --show
 tsk skill --show add
 tsk skill add --show
 tsk skill --show workflow
+tsk skill --show working-on-task
 tsk skill --show note
 
 # YAML frontmatter only

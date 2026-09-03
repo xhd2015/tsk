@@ -2,7 +2,7 @@
 
 - Exit 0; stderr empty.
 - Usage mentions `--show`, `--install`, `--list`.
-- Available topics includes `add` and `overview`.
+- Available topics includes `add`, `overview`, and `working-on-task`.
 
 ## Exit Code
 
@@ -22,7 +22,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	if !strings.HasPrefix(resp.Stdout, "Usage: tsk skill") {
 		t.Fatalf("stdout=%q missing usage prefix", resp.Stdout)
 	}
-	for _, want := range []string{"--show", "--install", "--list", "Available topics:", "add", "overview"} {
+	for _, want := range []string{"--show", "--install", "--list", "Available topics:", "add", "overview", "working-on-task"} {
 		if !strings.Contains(resp.Stdout, want) {
 			t.Fatalf("stdout missing %q:\n%s", want, resp.Stdout)
 		}
