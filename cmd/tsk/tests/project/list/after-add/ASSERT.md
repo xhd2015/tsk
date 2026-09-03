@@ -1,7 +1,7 @@
 ## Expected
 
 - Exit 0.
-- Header includes `NAME`, `ORIGIN`, `CWD`, `TASKS`.
+- Header includes `NAME`, `ORIGIN`, `LOCATION`, `TASKS`.
 - Row includes `dot-pkgs`, `github.com/xhd2015/dot-pkgs`, and task count `1`.
 - Footer `1 project`.
 
@@ -19,7 +19,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	assertContains(t, resp.Stdout, "NAME")
 	assertContains(t, resp.Stdout, "ORIGIN")
-	assertContains(t, resp.Stdout, "CWD")
+	assertContains(t, resp.Stdout, "LOCATION")
 	assertContains(t, resp.Stdout, "TASKS")
 	assertContains(t, resp.Stdout, "dot-pkgs")
 	assertContains(t, resp.Stdout, "github.com/xhd2015/dot-pkgs")

@@ -11,9 +11,11 @@ import (
 
 // ProjectEntry is one row in TSK_HOME/projects.json.
 type ProjectEntry struct {
-	Origin string `json:"origin,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Cwd    string `json:"cwd,omitempty"` // tilde form preferred
+	Origin   string `json:"origin,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Location string `json:"location,omitempty"` // main checkout, tilde form
+	// Cwd is legacy-only: accepted on read, migrated into Location, never written.
+	Cwd string `json:"cwd,omitempty"`
 }
 
 // ProjectsFile is the on-disk registry document.
@@ -41,13 +43,19 @@ func ReadProjects(home string) (ProjectsFile, error) {
 	if f.Projects == nil {
 		f.Projects = []ProjectEntry{}
 	}
+	for i := range f.Projects {
+		normalizeProjectEntry(&f.Projects[i])
+	}
 	return f, nil
 }
 
-// WriteProjects writes projects.json atomically.
+// WriteProjects writes projects.json atomically (location only; no cwd).
 func WriteProjects(home string, f ProjectsFile) error {
 	if f.Projects == nil {
 		f.Projects = []ProjectEntry{}
+	}
+	for i := range f.Projects {
+		normalizeProjectEntry(&f.Projects[i])
 	}
 	if err := os.MkdirAll(home, 0o755); err != nil {
 		return err
@@ -99,6 +107,18 @@ func FindProjectByOrigin(f ProjectsFile, origin string) (ProjectEntry, bool) {
 		}
 	}
 	return ProjectEntry{}, false
+}
+
+// EffectiveLocation returns the project location (after normalize).
+func (e ProjectEntry) EffectiveLocation() string {
+	return e.Location
+}
+
+func normalizeProjectEntry(e *ProjectEntry) {
+	if e.Location == "" && e.Cwd != "" {
+		e.Location = e.Cwd
+	}
+	e.Cwd = ""
 }
 
 // SortedProjects returns a copy sorted by name then origin.

@@ -23,7 +23,7 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **events.jsonl** — append-only audit log; one JSON object per CLI invocation (success or failure).
 - **Task directory** — name `[id]-<slug>/` under `inbox/` (no topic), `topics/<path>/` (topic tree), or nested under a parent task dir; contains `task.json`, `context/` (empty on create), and `clarify/` (during clarification with `batch.json`).
 - **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), optional `parent_id` (nested sub-tasks), optional `cwd` (CLI recording directory), optional `project` `{id,name}` (canonical origin key + basename), `stage`, `created_at`, `updated_at`, `stage_history`.
-- **project** — `tsk project add|tree|list|which|register|unregister`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json`; auto ledger `projects-auto.json` (upsert on add; main-repo `cwd`; local-TZ `first_seen_at`/`last_seen_at`). `list` default/`--all` = union auto+registered with `tasks=`; `--auto` / `--registered` select one source; `--active` filters. `tree` = task forest; default also scans nested git dirs (max depth 3) via `scan_repo` and streams root-first (`--streaming` default; `--no-streaming` buffers). No mark import.
+- **project** — `tsk project add|tree|list|which|register|unregister`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json`; auto ledger `projects-auto.json` (upsert on add; main-repo `location` only, tilde-form; local-TZ `first_seen_at`/`last_seen_at`; legacy ledger `cwd` migrated to `location` on read). `list` default/`--all` = union auto+registered with `tasks=` and `LOCATION` column; `--json` includes `location`; `--auto` / `--registered` select one source; `--active` filters. `show` prints task `cwd:` in tilde form and `project: <location>` when resolvable, else name, else origin. `tree` = task forest; default also scans nested git dirs (max depth 3) via `scan_repo` and streams root-first (`--streaming` default; `--no-streaming` buffers). No mark import.
 - **add --parent** — `tsk add --parent <id> <title>` nests under the parent task directory (any depth); child inherits parent `topic_path`; mutually exclusive with `--topic`.
 - **Slug** — lowercase, non-letter-digit → `-`, collapse, trim, max 64 runes; immutable after create.
 - **Stage workflow** — `create → in_process → clarification → implementation → verification → summary → user_followup (loop to clarification) OR done`; `archived` is an alternate off-spine terminal. `done` and `archived` are terminal.
@@ -239,7 +239,10 @@ tsk tests
 │   │   ├── scp-origin/          # gitlab@host:path.git → origin key
 │   │   ├── by-name/             # --project registered non-git → name
 │   │   └── no-git/              # unregistered non-git → Error + register hint
-│   ├── register/basic/          # projects.json name + cwd
+│   ├── register/                # idempotent register; optional --name
+│   │   ├── basic/               # first register + conflicting cwd error
+│   │   ├── idempotent/          # up-to-date / fill empty location
+│   │   └── no-name/             # auto basename / match by cwd
 │   ├── which/basic/             # origin/name/cwd probe
 │   ├── tree/                    # project tree (task forest)
 │   │   ├── current/
@@ -253,7 +256,7 @@ tsk tests
 │   │   ├── empty/
 │   │   ├── after-add/           # auto row with tasks=
 │   │   └── union-registered/    # register-only appears in default list
-│   └── show-integration/        # show prints cwd + origin
+│   └── show-integration/        # show: cwd + project location|name|origin
 ├── list/                         # tsk list
 │   └── filter/                   # --stage create filters ids
 ├── events/                       # events.jsonl audit

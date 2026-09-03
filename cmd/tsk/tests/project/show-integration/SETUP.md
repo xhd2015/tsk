@@ -1,19 +1,12 @@
 # Scenario
 
-**Feature**: `tsk show` prints cwd and project for project tasks
+**Feature**: `tsk show` project line prefers ledger `location` (tilde), else name, else origin; task `cwd:` stays as recorded
 
 ```
-project add; show <id> -> cwd: and project: lines
+project add | update --set-project
+  -> show: cwd: <task cwd>; project: <location|name|origin>
 ```
 
-```go
-import "fmt"
+## Intentional exclusions
 
-func Setup(t *testing.T, d *session.Doctest, req *Request) error {
-	initGitRepo(t, req.WorkRoot, "https://github.com/xhd2015/dot-pkgs.git")
-	id := projectAddOK(t, req, "show-me")
-	req.TaskID = id
-	req.Args = []string{"show", fmt.Sprintf("%d", id)}
-	return nil
-}
-```
+- Task.json still has create-time `cwd` (shown tilde-form); ledger uses `location` only.

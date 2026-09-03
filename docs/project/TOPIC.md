@@ -19,9 +19,14 @@ tsk project tree [--dir PATH | --name NAME | --project KEY] [--stage STAGE] [--a
                  [--color|--plain] [--json]
 tsk project list [--all|--auto|--registered] [--active] [--json]
 tsk project which [--dir PATH]
-tsk project register --name NAME [--cwd PATH] [--origin ORIGIN]
+tsk project register [--name NAME] [--cwd PATH] [--origin ORIGIN]
 tsk project unregister <name>
 ```
+
+`register` is idempotent: same name/location/origin → already up to date; empty
+`location`/`origin` may be filled; conflicting non-empty values error.
+Without `--name`, match location→basename(location) as name.
+
 
 ## Identity (prefer origin)
 
@@ -41,23 +46,26 @@ Explicit register only. Origin-only projects need no row.
 ```json
 {
   "projects": [
-    { "origin": "github.com/xhd2015/dot-pkgs", "name": "dot-pkgs", "cwd": "~/Projects/xhd2015/dot-pkgs" },
-    { "name": "seatalk-local-bot", "cwd": "~/seatalk-local-bot" }
+    { "origin": "github.com/xhd2015/dot-pkgs", "name": "dot-pkgs", "location": "~/Projects/xhd2015/dot-pkgs" },
+    { "name": "seatalk-local-bot", "location": "~/seatalk-local-bot" }
   ]
 }
 ```
 
 - `name` unique when set
-- `cwd` stored with `~` via pathfmt when under `$HOME`
+- `location` is the **main checkout** (git main worktree, else probe dir), tilde-form
+- legacy `cwd` on read is migrated into `location` and dropped on write
 
 ## Auto ledger — `TSK_HOME/projects-auto.json`
 
 Written on every successful `project add` (upsert-only). Identity is `origin` XOR
-`name`. `cwd` is the **main repo** root (linked worktrees still record main),
-tilde-form, set once; later adds only bump `last_seen_at` (local TZ offset).
+`name`. `location` is the **main repo** root (linked worktrees still record main),
+tilde-form, set once; later adds only bump `last_seen_at` (and fill `location`
+when empty). `tsk show` prints `project: <location>` when resolvable (else name,
+else origin), and task `cwd:` in tilde form when recorded.
 
 `tsk project list` (default / `--all`): union of auto + registered as an aligned
-table (`NAME` `ORIGIN` `CWD` `TASKS`; registered-only rows show `0` until add).
+table (`NAME` `ORIGIN` `LOCATION` `TASKS`; registered-only rows show `0` until add).
 When `TASKS` is shown, rows sort by count descending (tie-break name, origin).
 `--auto` / `--registered` select one source; `--active` filters `tasks>0`.
 `--registered` omits the `TASKS` column unless `--active` (then name/origin order).

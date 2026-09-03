@@ -7,9 +7,9 @@ import (
 
 func TestFormatProjectListTable_Basic(t *testing.T) {
 	rows := []projectListJSONRow{
-		{Name: "tsk", Origin: "github.com/xhd2015/tsk", Cwd: "~/Projects/xhd2015/tsk", Tasks: 3},
-		{Name: "widget-cli", Origin: "git.example.com/…/widget-cli", Cwd: "~/Projects/…/widget-cli", Tasks: 25},
-		{Name: "local-bot", Origin: "", Cwd: "~/local-bot", Tasks: 2},
+		{Name: "tsk", Origin: "github.com/xhd2015/tsk", Location: "~/Projects/xhd2015/tsk", Tasks: 3},
+		{Name: "widget-cli", Origin: "git.example.com/…/widget-cli", Location: "~/Projects/…/widget-cli", Tasks: 25},
+		{Name: "local-bot", Origin: "", Location: "~/local-bot", Tasks: 2},
 	}
 	got := formatProjectListTable(rows, true)
 	lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
@@ -35,22 +35,22 @@ func TestFormatProjectListTable_Basic(t *testing.T) {
 	if !strings.HasPrefix(lines[1][originIdx:], "github.com") {
 		t.Fatalf("origin column misaligned:\n%s", got)
 	}
-	cwdIdx := strings.Index(lines[0], "CWD")
-	if cwdIdx < 0 {
-		t.Fatal("CWD missing")
+	locIdx := strings.Index(lines[0], "LOCATION")
+	if locIdx < 0 {
+		t.Fatal("LOCATION missing")
 	}
-	// local-bot: blank ORIGIN, cwd under CWD
-	if strings.TrimSpace(lines[3][originIdx:cwdIdx]) != "" {
+	// local-bot: blank ORIGIN, path under LOCATION
+	if strings.TrimSpace(lines[3][originIdx:locIdx]) != "" {
 		t.Fatalf("expected blank ORIGIN for local-bot:\n%s", got)
 	}
-	if !strings.HasPrefix(lines[3][cwdIdx:], "~/local-bot") {
-		t.Fatalf("cwd column misaligned:\n%s", got)
+	if !strings.HasPrefix(lines[3][locIdx:], "~/local-bot") {
+		t.Fatalf("location column misaligned:\n%s", got)
 	}
 }
 
 func TestFormatProjectListTable_NoTasks(t *testing.T) {
 	rows := []projectListJSONRow{
-		{Name: "local-bot", Cwd: "~/local-bot"},
+		{Name: "local-bot", Location: "~/local-bot"},
 	}
 	got := formatProjectListTable(rows, false)
 	if strings.Contains(got, "TASKS") {

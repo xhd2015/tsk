@@ -171,8 +171,8 @@ func resolveAddProject(home, dirFlag, projectName string) (cwd string, ref stora
 			return "", storage.ProjectRef{}, fmt.Errorf("tsk project add: unknown project %q (see tsk project register --help)", projectName)
 		}
 		probe := strings.TrimSpace(dirFlag)
-		if probe == "" && entry.Cwd != "" {
-			probe = pathfmt.Expand(entry.Cwd)
+		if probe == "" && entry.Location != "" {
+			probe = pathfmt.Expand(entry.Location)
 		}
 		if probe == "" {
 			probe, err = resolveProbeDir("")
@@ -204,7 +204,7 @@ func resolveAddProject(home, dirFlag, projectName string) (cwd string, ref stora
 	if origin, oerr := gitNormalizedOrigin(probeDir); oerr == nil && origin != "" {
 		return probeDir, storage.ProjectRef{Origin: origin}, nil
 	}
-	if entry, ok := findRegistryByAbsCwd(reg, probeDir); ok && entry.Name != "" {
+	if entry, ok := findRegistryByLocation(reg, probeDir); ok && entry.Name != "" {
 		return probeDir, storage.ProjectRef{Name: entry.Name}, nil
 	}
 	return "", storage.ProjectRef{}, fmt.Errorf("tsk project add: no git origin and not registered (see tsk project register --help)")
@@ -236,7 +236,7 @@ func runProjectWhich(home string, args []string) error {
 	}
 
 	origin, _ := gitNormalizedOrigin(probeDir)
-	entry, hasReg := findRegistryByAbsCwd(reg, probeDir)
+	entry, hasReg := findRegistryByLocation(reg, probeDir)
 	if origin != "" {
 		if e, ok := storage.FindProjectByOrigin(reg, origin); ok {
 			entry, hasReg = e, true
@@ -282,15 +282,12 @@ func runProjectRegister(home string, args []string) error {
 		return projectFail(fmt.Errorf("tsk project register: unexpected arguments"))
 	}
 	name = strings.TrimSpace(name)
-	if name == "" {
-		return projectFail(fmt.Errorf("tsk project register: --name required"))
-	}
 
 	probeDir, err := resolveProbeDir(cwdFlag)
 	if err != nil {
 		return projectFail(err)
 	}
-	cwdTilde := pathfmt.TildeHome(probeDir)
+	locationTilde := pathfmt.TildeHome(mainRepoDirForAuto(probeDir))
 
 	origin := strings.TrimSpace(originFlag)
 	if origin == "" {
@@ -308,21 +305,168 @@ func runProjectRegister(home string, args []string) error {
 	if err != nil {
 		return projectFail(err)
 	}
-	if _, ok := storage.FindProjectByName(reg, name); ok {
-		return projectFail(fmt.Errorf("tsk project register: name %q already registered", name))
+
+	idx := -1
+	if name != "" {
+		idx = indexProjectByName(reg, name)
+	} else {
+		idx = findRegisterMatchIndex(reg, probeDir, locationTilde)
+		if idx >= 0 {
+			name = reg.Projects[idx].Name
+		} else {
+			name = registerAutoName(locationTilde)
+			idx = indexProjectByName(reg, name)
+		}
+	}
+	if name == "" {
+		return projectFail(fmt.Errorf("tsk project register: could not determine project name"))
 	}
 
-	entry := storage.ProjectEntry{
-		Name:   name,
-		Cwd:    cwdTilde,
-		Origin: origin,
+	if idx < 0 {
+		entry := storage.ProjectEntry{
+			Name:     name,
+			Location: locationTilde,
+			Origin:   origin,
+		}
+		reg.Projects = append(reg.Projects, entry)
+		if err := storage.WriteProjects(home, reg); err != nil {
+			return projectFail(err)
+		}
+		fmt.Printf("registered %s\n", name)
+		return nil
 	}
-	reg.Projects = append(reg.Projects, entry)
+
+	existing := reg.Projects[idx]
+	newLoc, locMsg, err := mergeRegisterField(name, "location", existing.Location, locationTilde)
+	if err != nil {
+		return projectFail(err)
+	}
+	newOrigin, originMsg, err := mergeRegisterField(name, "origin", existing.Origin, origin)
+	if err != nil {
+		return projectFail(err)
+	}
+
+	if locMsg == "" && originMsg == "" {
+		fmt.Printf("project %s already up to date\n", name)
+		return nil
+	}
+
+	reg.Projects[idx] = storage.ProjectEntry{
+		Name:     existing.Name,
+		Location: newLoc,
+		Origin:   newOrigin,
+	}
 	if err := storage.WriteProjects(home, reg); err != nil {
 		return projectFail(err)
 	}
-	fmt.Printf("registered %s\n", name)
+	for _, msg := range []string{locMsg, originMsg} {
+		if msg != "" {
+			fmt.Println(msg)
+		}
+	}
 	return nil
+}
+
+func indexProjectByName(reg storage.ProjectsFile, name string) int {
+	name = strings.TrimSpace(name)
+	for i, e := range reg.Projects {
+		if e.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// findRegisterMatchIndex resolves a row when --name is omitted:
+// 1) non-empty location == probe dir
+// 2) non-empty location == incoming location
+func findRegisterMatchIndex(reg storage.ProjectsFile, probeDir, locationTilde string) int {
+	for i, e := range reg.Projects {
+		if e.Location != "" && projectPathEqual(e.Location, probeDir) {
+			return i
+		}
+	}
+	for i, e := range reg.Projects {
+		if e.Location != "" && projectPathEqual(e.Location, locationTilde) {
+			return i
+		}
+	}
+	return -1
+}
+
+func registerAutoName(locationTilde string) string {
+	if locationTilde == "" {
+		return ""
+	}
+	return filepath.Base(pathfmt.Expand(locationTilde))
+}
+
+func projectPathEqual(a, b string) bool {
+	a = strings.TrimSpace(a)
+	b = strings.TrimSpace(b)
+	if a == "" && b == "" {
+		return true
+	}
+	if a == "" || b == "" {
+		return false
+	}
+	return filepath.Clean(pathfmt.Expand(a)) == filepath.Clean(pathfmt.Expand(b))
+}
+
+func displayRegisterPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return "(empty)"
+	}
+	return pathfmt.TildeHome(pathfmt.Expand(p))
+}
+
+// mergeRegisterField applies idempotent fill rules for one register field.
+// Returns the value to store, an optional stdout notice, or an inconsistency error.
+func mergeRegisterField(name, field, existing, incoming string) (string, string, error) {
+	ex := strings.TrimSpace(existing)
+	in := strings.TrimSpace(incoming)
+
+	var equal bool
+	if field == "origin" {
+		equal = ex == in
+	} else {
+		equal = projectPathEqual(ex, in)
+	}
+	if equal {
+		if field == "origin" {
+			return ex, "", nil
+		}
+		// Prefer tilde form when both represent the same path.
+		if in != "" {
+			return pathfmt.TildeHome(pathfmt.Expand(in)), "", nil
+		}
+		return ex, "", nil
+	}
+	if ex == "" && in != "" {
+		store := in
+		shown := in
+		if field != "origin" {
+			store = pathfmt.TildeHome(pathfmt.Expand(in))
+			shown = store
+		}
+		return store, fmt.Sprintf("updated %s: (empty) -> %s", field, shown), nil
+	}
+	var from, to string
+	if field == "origin" {
+		from, to = displayRegisterOrigin(ex), displayRegisterOrigin(in)
+	} else {
+		from, to = displayRegisterPath(ex), displayRegisterPath(in)
+	}
+	return "", "", fmt.Errorf("tsk project register: name %q already registered with different %s (%s -> %s); possible inconsistency", name, field, from, to)
+}
+
+func displayRegisterOrigin(o string) string {
+	o = strings.TrimSpace(o)
+	if o == "" {
+		return "(empty)"
+	}
+	return o
 }
 
 func runProjectUnregister(home string, args []string) error {
@@ -368,10 +512,10 @@ func runProjectUnregister(home string, args []string) error {
 }
 
 type projectListJSONRow struct {
-	Origin string `json:"origin,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Cwd    string `json:"cwd,omitempty"`
-	Tasks  int    `json:"tasks"`
+	Origin   string `json:"origin,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Location string `json:"location,omitempty"`
+	Tasks    int    `json:"tasks"`
 }
 
 func runProjectRegistryList(home string, args []string) error {
@@ -444,7 +588,11 @@ func listProjects(home, mode string, asJSON, activeOnly bool) error {
 			if activeOnly && n == 0 {
 				continue
 			}
-			row := projectListJSONRow{Origin: e.Origin, Name: e.Name, Cwd: e.Cwd}
+			row := projectListJSONRow{
+				Origin:   e.Origin,
+				Name:     e.Name,
+				Location: e.EffectiveLocation(),
+			}
 			if includeTasks {
 				row.Tasks = n
 			}
@@ -487,10 +635,10 @@ func buildAutoListRows(auto storage.ProjectsAutoFile, reg storage.ProjectsFile, 
 			continue
 		}
 		rows = append(rows, projectListJSONRow{
-			Origin: e.Origin,
-			Name:   name,
-			Cwd:    e.Cwd,
-			Tasks:  n,
+			Origin:   e.Origin,
+			Name:     name,
+			Location: e.EffectiveLocation(),
+			Tasks:    n,
 		})
 	}
 	return rows
@@ -509,10 +657,10 @@ func buildAllListRows(auto storage.ProjectsAutoFile, reg storage.ProjectsFile, c
 			continue
 		}
 		rows = append(rows, projectListJSONRow{
-			Origin: e.Origin,
-			Name:   name,
-			Cwd:    e.Cwd,
-			Tasks:  n,
+			Origin:   e.Origin,
+			Name:     name,
+			Location: e.EffectiveLocation(),
+			Tasks:    n,
 		})
 	}
 
@@ -539,10 +687,10 @@ func buildAllListRows(auto storage.ProjectsAutoFile, reg storage.ProjectsFile, c
 			continue
 		}
 		rows = append(rows, projectListJSONRow{
-			Origin: e.Origin,
-			Name:   e.Name,
-			Cwd:    e.Cwd,
-			Tasks:  n,
+			Origin:   e.Origin,
+			Name:     e.Name,
+			Location: e.EffectiveLocation(),
+			Tasks:    n,
 		})
 		seen[key] = true
 	}
@@ -713,7 +861,7 @@ func runProjectTree(home string, args []string) error {
 			wantKey = origin
 			label := displayLabelForOrigin(reg, origin)
 			emptyBranch = &projectGroup{Key: origin, Label: label}
-		} else if entry, ok := findRegistryByAbsCwd(reg, probeDir); ok && entry.Name != "" {
+		} else if entry, ok := findRegistryByLocation(reg, probeDir); ok && entry.Name != "" {
 			wantName = entry.Name
 			emptyBranch = &projectGroup{Key: "name:" + entry.Name, Label: entry.Name}
 		} else {
@@ -916,7 +1064,7 @@ func projectKeyFromRepoPath(path string, reg storage.ProjectsFile) (key, label s
 	if origin, err := gitNormalizedOrigin(path); err == nil && origin != "" {
 		return origin, displayLabelForOrigin(reg, origin)
 	}
-	if entry, ok := findRegistryByAbsCwd(reg, path); ok && entry.Name != "" {
+	if entry, ok := findRegistryByLocation(reg, path); ok && entry.Name != "" {
 		return "name:" + entry.Name, entry.Name
 	}
 	return "", ""
@@ -970,7 +1118,7 @@ func discoverNearbyProjectKeys(root string, maxDepth int, reg storage.ProjectsFi
 			keys[origin] = struct{}{}
 			continue
 		}
-		if entry, ok := findRegistryByAbsCwd(reg, repo.Path); ok && entry.Name != "" {
+		if entry, ok := findRegistryByLocation(reg, repo.Path); ok && entry.Name != "" {
 			keys["name:"+entry.Name] = struct{}{}
 		}
 	}
@@ -1307,13 +1455,14 @@ func gitRemoteOriginURL(dir string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func findRegistryByAbsCwd(reg storage.ProjectsFile, abs string) (storage.ProjectEntry, bool) {
+func findRegistryByLocation(reg storage.ProjectsFile, abs string) (storage.ProjectEntry, bool) {
 	abs = filepath.Clean(abs)
 	for _, e := range reg.Projects {
-		if e.Cwd == "" {
+		loc := e.EffectiveLocation()
+		if loc == "" {
 			continue
 		}
-		expanded := filepath.Clean(pathfmt.Expand(e.Cwd))
+		expanded := filepath.Clean(pathfmt.Expand(loc))
 		if expanded == abs {
 			return e, true
 		}

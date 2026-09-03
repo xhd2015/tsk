@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/xhd2015/dot-pkgs/go-pkgs/pathfmt"
 	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
@@ -55,13 +56,11 @@ func runShow(home string, args []string) error {
 		fmt.Printf("parent: %d\n", task.ParentID)
 	}
 	if task.Cwd != "" {
-		fmt.Printf("cwd: %s\n", task.Cwd)
+		fmt.Printf("cwd: %s\n", pathfmt.TildeHome(pathfmt.Expand(task.Cwd)))
 	}
 	if task.Project != nil {
-		if task.Project.Origin != "" {
-			fmt.Printf("project: %s\n", task.Project.Origin)
-		} else if task.Project.Name != "" {
-			fmt.Printf("project: %s\n", task.Project.Name)
+		if line := formatShowProject(home, task.Project); line != "" {
+			fmt.Printf("project: %s\n", line)
 		}
 	}
 	if len(task.Labels) == 0 {
@@ -96,4 +95,50 @@ func runShow(home string, args []string) error {
 		}
 	}
 	return nil
+}
+
+// formatShowProject picks the project: line value: ledger location (tilde),
+// else task/registry name, else origin.
+func formatShowProject(home string, ref *storage.ProjectRef) string {
+	if ref == nil {
+		return ""
+	}
+	if loc := lookupLedgerLocation(home, ref); loc != "" {
+		return pathfmt.TildeHome(pathfmt.Expand(loc))
+	}
+	if ref.Name != "" {
+		return ref.Name
+	}
+	return ref.Origin
+}
+
+func lookupLedgerLocation(home string, ref *storage.ProjectRef) string {
+	if ref == nil {
+		return ""
+	}
+	reg, err := storage.ReadProjects(home)
+	if err == nil {
+		if ref.Origin != "" {
+			if e, ok := storage.FindProjectByOrigin(reg, ref.Origin); ok {
+				if loc := e.EffectiveLocation(); loc != "" {
+					return loc
+				}
+			}
+		}
+		if ref.Name != "" {
+			if e, ok := storage.FindProjectByName(reg, ref.Name); ok {
+				if loc := e.EffectiveLocation(); loc != "" {
+					return loc
+				}
+			}
+		}
+	}
+	auto, err := storage.ReadProjectsAuto(home)
+	if err != nil {
+		return ""
+	}
+	if e, ok := storage.FindProjectAuto(auto, *ref); ok {
+		return e.EffectiveLocation()
+	}
+	return ""
 }

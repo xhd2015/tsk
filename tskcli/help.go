@@ -74,7 +74,7 @@ Subcommands:
   tree         list project tasks as a tree (like tsk tree)
   list         list registered projects (projects.json)
   which        print resolved origin/name/cwd for cwd/--dir
-  register     register a project name (and optional origin/cwd)
+  register     register a project (optional --name; idempotent re-register)
   unregister   remove a registered project name
 
   -h, --help  show this help
@@ -131,7 +131,7 @@ Flags:
 func projectRegistryListHelp() string {
 	return `Usage: tsk project list [--all|--auto|--registered] [--active] [--json]
 
-List projects as an aligned table (NAME ORIGIN CWD TASKS). Default and --all:
+List projects as an aligned table (NAME ORIGIN LOCATION TASKS). Default and --all:
 union of projects-auto.json and projects.json (with live task counts).
 When TASKS is shown, rows are sorted by count descending. Registered-only
 names appear with tasks=0 until add.
@@ -147,15 +147,17 @@ Flags:
 }
 
 func projectRegisterHelp() string {
-	return `Usage: tsk project register --name NAME [--cwd PATH] [--origin ORIGIN]
+	return `Usage: tsk project register [--name NAME] [--cwd PATH] [--origin ORIGIN]
 
-Register a unique project name in projects.json.
-cwd is stored with a ~ home prefix when under $HOME.
+Register a project in projects.json (location tilde-form under $HOME).
+Without --name: match by location (vs probe, then vs main location), else
+basename(location) as name. Re-register is idempotent when fields match;
+empty location/origin may be filled. Conflicting non-empty values error.
 If --origin is omitted, origin is taken from git in --cwd/cwd when present.
 
 Flags:
-  --name NAME       unique project name (required)
-  --cwd PATH        project directory (default: process cwd)
+  --name NAME       project name (optional; default: basename of location)
+  --cwd PATH        probe directory (default: process cwd; stored as location)
   --origin ORIGIN   optional origin key or git URL
   -h, --help        show this help
 `

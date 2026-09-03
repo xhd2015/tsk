@@ -38,6 +38,7 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	}
 	s := string(data)
 	assertContains(t, s, `"origin": "github.com/xhd2015/dot-pkgs"`)
+	assertContains(t, s, `"location":`)
 	assertContains(t, s, `"first_seen_at": "2026-07-09T12:00:00+08:00"`)
 	assertContains(t, s, `"last_seen_at": "2026-07-09T12:00:00+08:00"`)
 }

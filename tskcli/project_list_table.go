@@ -7,20 +7,20 @@ import (
 )
 
 // formatProjectListTable renders human-readable project list rows as an
-// aligned table (NAME ORIGIN CWD [TASKS]). Empty cells are blank. tasks is
+// aligned table (NAME ORIGIN LOCATION [TASKS]). Empty cells are blank. tasks is
 // right-aligned when present. Caller prints the footer separately.
 func formatProjectListTable(rows []projectListJSONRow, includeTasks bool) string {
 	if len(rows) == 0 {
 		return ""
 	}
-	headers := []string{"NAME", "ORIGIN", "CWD"}
+	headers := []string{"NAME", "ORIGIN", "LOCATION"}
 	if includeTasks {
 		headers = append(headers, "TASKS")
 	}
 	table := make([][]string, 0, 1+len(rows))
 	table = append(table, headers)
 	for _, r := range rows {
-		row := []string{r.Name, r.Origin, r.Cwd}
+		row := []string{r.Name, r.Origin, r.Location}
 		if includeTasks {
 			row = append(row, fmt.Sprintf("%d", r.Tasks))
 		}

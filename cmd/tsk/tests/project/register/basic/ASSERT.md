@@ -2,14 +2,18 @@
 
 - Exit 0; stdout `registered seatalk`.
 - `project list` shows the name.
-- Duplicate register errors.
+- Duplicate register with a different location errors (inconsistency).
 
 ## Exit Code
 
 - 0
 
 ```go
-import "strings"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+)
 
 func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err error) {
 	assertErrIsNil(t, err)
@@ -23,11 +27,22 @@ func Assert(t *testing.T, d *session.Doctest, req *Request, resp *Response, err 
 	assertContains(t, list.Stdout, "seatalk")
 	assertContains(t, list.Stdout, "1 project")
 
+	regPath := filepath.Join(req.TskHome, "projects.json")
+	data, err := os.ReadFile(regPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContains(t, string(data), `"name": "seatalk"`)
+	assertContains(t, string(data), `"location":`)
+
+	jsonList := runTskOK(t, req, "project", "list", "--registered", "--json")
+	assertContains(t, jsonList.Stdout, `"location"`)
+
 	dup := runTskCmd(t, req, "project", "register", "--name", "seatalk", "--cwd", outsideGitDir(t))
 	if dup.ExitCode == 0 {
 		t.Fatal("duplicate register should fail")
 	}
-	if !strings.Contains(dup.Stderr, "already registered") {
+	if !strings.Contains(dup.Stderr, "already registered") || !strings.Contains(dup.Stderr, "possible inconsistency") {
 		t.Fatalf("stderr=%q", dup.Stderr)
 	}
 }

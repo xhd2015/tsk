@@ -14,7 +14,9 @@ import (
 type ProjectAutoEntry struct {
 	Origin      string `json:"origin,omitempty"`
 	Name        string `json:"name,omitempty"`
-	Cwd         string `json:"cwd,omitempty"` // main repo, tilde form; set once
+	Location    string `json:"location,omitempty"` // main checkout, tilde form; set once
+	// Cwd is legacy-only: accepted on read, migrated into Location, never written.
+	Cwd         string `json:"cwd,omitempty"`
 	FirstSeenAt string `json:"first_seen_at"`
 	LastSeenAt  string `json:"last_seen_at"`
 }
@@ -44,13 +46,19 @@ func ReadProjectsAuto(home string) (ProjectsAutoFile, error) {
 	if f.Projects == nil {
 		f.Projects = []ProjectAutoEntry{}
 	}
+	for i := range f.Projects {
+		normalizeProjectAutoEntry(&f.Projects[i])
+	}
 	return f, nil
 }
 
-// WriteProjectsAuto writes projects-auto.json atomically.
+// WriteProjectsAuto writes projects-auto.json atomically (location only; no cwd).
 func WriteProjectsAuto(home string, f ProjectsAutoFile) error {
 	if f.Projects == nil {
 		f.Projects = []ProjectAutoEntry{}
+	}
+	for i := range f.Projects {
+		normalizeProjectAutoEntry(&f.Projects[i])
 	}
 	if err := os.MkdirAll(home, 0o755); err != nil {
 		return err
@@ -92,9 +100,22 @@ func NowLocalTimestamp() string {
 	return time.Now().Format(time.RFC3339)
 }
 
+// EffectiveLocation returns the project location (after normalize).
+func (e ProjectAutoEntry) EffectiveLocation() string {
+	return e.Location
+}
+
+func normalizeProjectAutoEntry(e *ProjectAutoEntry) {
+	if e.Location == "" && e.Cwd != "" {
+		e.Location = e.Cwd
+	}
+	e.Cwd = ""
+}
+
 // UpsertProjectAuto inserts or updates an auto-seen project.
-// New rows set cwd/first/last; existing rows only bump last_seen_at.
-func UpsertProjectAuto(home string, ref ProjectRef, cwdTilde string) error {
+// New rows set location/first/last; existing rows bump last_seen_at
+// and fill location when empty.
+func UpsertProjectAuto(home string, ref ProjectRef, locationTilde string) error {
 	f, err := ReadProjectsAuto(home)
 	if err != nil {
 		return err
@@ -104,18 +125,32 @@ func UpsertProjectAuto(home string, ref ProjectRef, cwdTilde string) error {
 		e := &f.Projects[i]
 		if autoEntryMatches(e, ref) {
 			e.LastSeenAt = now
+			if e.Location == "" {
+				e.Location = locationTilde
+			}
+			e.Cwd = ""
 			return WriteProjectsAuto(home, f)
 		}
 	}
 	entry := ProjectAutoEntry{
 		Origin:      ref.Origin,
 		Name:        ref.Name,
-		Cwd:         cwdTilde,
+		Location:    locationTilde,
 		FirstSeenAt: now,
 		LastSeenAt:  now,
 	}
 	f.Projects = append(f.Projects, entry)
 	return WriteProjectsAuto(home, f)
+}
+
+// FindProjectAuto returns the auto entry matching ref (origin XOR name).
+func FindProjectAuto(f ProjectsAutoFile, ref ProjectRef) (ProjectAutoEntry, bool) {
+	for i := range f.Projects {
+		if autoEntryMatches(&f.Projects[i], ref) {
+			return f.Projects[i], true
+		}
+	}
+	return ProjectAutoEntry{}, false
 }
 
 func autoEntryMatches(e *ProjectAutoEntry, ref ProjectRef) bool {
