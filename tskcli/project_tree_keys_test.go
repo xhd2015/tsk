@@ -72,3 +72,30 @@ func TestTaskMatchesProjectKeySet(t *testing.T) {
 		t.Fatal("nil keys should not match")
 	}
 }
+
+func TestRefFromProjectGroupKey(t *testing.T) {
+	t.Parallel()
+	name := refFromProjectGroupKey("name:seatalk")
+	if name.Name != "seatalk" || name.Origin != "" {
+		t.Fatalf("%+v", name)
+	}
+	origin := refFromProjectGroupKey("github.com/xhd2015/tsk")
+	if origin.Origin != "github.com/xhd2015/tsk" || origin.Name != "" {
+		t.Fatalf("%+v", origin)
+	}
+}
+
+func TestPrependProjectNotes(t *testing.T) {
+	t.Parallel()
+	kids := []*renderNode{{name: "[1] one"}}
+	if got := prependProjectNotes(nil, kids); len(got) != 1 || got[0].name != "[1] one" {
+		t.Fatalf("empty notes should keep kids")
+	}
+	got := prependProjectNotes([]storage.TopicNote{{TS: "t", Text: "dev cmd"}}, kids)
+	if len(got) != 2 || got[0].name != "notes" || got[1].name != "[1] one" {
+		t.Fatalf("want notes first: %+v", got)
+	}
+	if len(got[0].children) != 1 || got[0].children[0].name != "t  dev cmd" {
+		t.Fatalf("note line=%+v", got[0].children)
+	}
+}

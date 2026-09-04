@@ -103,7 +103,9 @@ tsk update <id> --clear-project
 
 ## Tree
 
-Like `tsk tree`. Default: current project **plus** projects discovered by a
+Like `tsk tree`. Project notes (if any) print as a `notes` group under each
+project node, before tasks (oldest first; omitted when the journal is empty).
+Default: current project **plus** projects discovered by a
 git-repo scan under the scan root (git toplevel of cwd/`--dir` when available,
 else that probe dir) at max depth **3**, non-terminal stages only. Nested
 checkouts (e.g. `external/dot-pkgs`) map via origin or registered cwd. Empty

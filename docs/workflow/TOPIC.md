@@ -27,7 +27,7 @@ create → in_process → clarification → implementation → verification
 | `tsk followup <id> <msg>` | From summary → `user_followup` + `context/followup-*.md` |
 | `tsk done <id>` | From any non-terminal stage → `done` (`--force` accepted, no extra effect) |
 | `tsk archive <id>` | From any non-terminal stage → `archived` (`--force` accepted, no extra effect) |
-| `tsk delete <id>` | Permanently remove task dir + index; `--recursive` for nested sub-tasks |
+| `tsk delete <id>` | Permanently remove task dir + index; `--recursive` for nested sub-tasks; `--dry-run` prints the plan and writes nothing |
 | `tsk status <id>` | Pipeline art (`diagram` / `agent` formats) |
 | `tsk next` | Oldest `in_process` id (or empty) |
 
@@ -39,6 +39,6 @@ create → in_process → clarification → implementation → verification
 - `status --format=agent` (or auto under agent hosts) for compact facts including `dir:`.
 - Record decisions in notes/progress rather than only changing stage.
 - Use `done` to finish or `archive` to shelve from any open stage; both are terminal.
-- Use `delete` for mistakes/duplicates; refuse without `--recursive` when children exist.
+- Use `delete` for mistakes/duplicates; refuse without `--recursive` when children exist. `--dry-run` previews ids/titles without removing files.
 - When the user asks to work on / finish a task end-to-end, follow topic
   `working-on-task` (tsk + wrk + kck playbook), not only these tips.

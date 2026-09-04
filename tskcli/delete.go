@@ -11,9 +11,10 @@ import (
 func runDelete(home string, args []string) error {
 	setCommand(currentCtx, "delete", args)
 
-	var recursive bool
+	var recursive, dryRun bool
 	remaining, err := lessflags.
 		Bool("--recursive", &recursive).
+		Bool("--dry-run", &dryRun).
 		Help("-h,--help", deleteHelp()).
 		HelpNoExit().
 		Parse(args)
@@ -31,7 +32,17 @@ func runDelete(home string, args []string) error {
 		return fail(err)
 	}
 
-	if err := storage.DeleteTask(home, id, recursive); err != nil {
+	plan, err := storage.PlanDelete(home, id, recursive)
+	if err != nil {
+		return fail(err)
+	}
+	if dryRun {
+		for _, t := range plan.Tasks {
+			fmt.Printf("[dry-run] would delete %d  [%d] %s\n", t.ID, t.ID, t.Title)
+		}
+		return nil
+	}
+	if err := storage.ApplyDelete(home, plan); err != nil {
 		return fail(err)
 	}
 	fmt.Printf("deleted %d\n", id)

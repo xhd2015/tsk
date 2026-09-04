@@ -5,7 +5,7 @@
 ```
 # leaf: delete <id> -> deleted id\n; dir + index gone
 # nested parent without --recursive -> error; with --recursive -> subtree gone
-tsk delete [--recursive] <id>
+tsk delete [--recursive] [--dry-run] <id>
 ```
 
 ```go

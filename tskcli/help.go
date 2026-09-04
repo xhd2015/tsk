@@ -107,6 +107,7 @@ func projectTreeHelp() string {
 List project-scoped tasks as a tree (like tsk tree).
 Default: current cwd's project plus projects from nested git repos under the
 scan root (git toplevel or cwd/--dir, max depth 3), non-terminal stages only.
+Project notes (if any) print as a notes group under each project, before tasks.
 Human default mode streams: root project first, then each discovered project
 as found. --no-streaming buffers then prints (root first, rest label-sorted).
 
@@ -710,7 +711,7 @@ Flags:
 }
 
 func deleteHelp() string {
-	return `Usage: tsk delete [--recursive] <id>
+	return `Usage: tsk delete [--recursive] [--dry-run] <id>
 
 Permanently remove a task directory and its index entry.
 Nested sub-tasks require --recursive (deletes the whole subtree).
@@ -719,6 +720,7 @@ Unlike tsk done / tsk archive, the task does not remain in the tree.
 
 Flags:
   --recursive   also delete nested sub-tasks under this task
+  --dry-run     print what would be deleted; write nothing
   -h, --help    show this help
 `
 }

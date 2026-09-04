@@ -783,6 +783,7 @@ type projectTreeJSON struct {
 type projectTreeJSONProject struct {
 	Key   string                  `json:"key"`
 	Label string                  `json:"label"`
+	Notes []storage.TopicNote     `json:"notes,omitempty"`
 	Tasks []storage.TopicTreeTask `json:"tasks"`
 }
 
@@ -888,7 +889,7 @@ func runProjectTree(home string, args []string) error {
 	// Default human scan mode streams; --no-streaming buffers; --json / filters stay buffered.
 	useStreaming := !asJSON && !explicitFilter && emptyBranch != nil && !noStreamingFlag
 	if useStreaming {
-		return runProjectTreeStream(reg, emptyBranch, probeDir, entries, stageFlag, doneFlag, archivedFlag, allFlag, noSubDirs, subDirsDepth, color, fancy)
+		return runProjectTreeStream(home, reg, emptyBranch, probeDir, entries, stageFlag, doneFlag, archivedFlag, allFlag, noSubDirs, subDirsDepth, color, fancy)
 	}
 
 	var allowedKeys map[string]struct{}
@@ -941,21 +942,26 @@ func runProjectTree(home string, args []string) error {
 	if asJSON {
 		out := projectTreeJSON{Projects: make([]projectTreeJSONProject, 0, len(groups))}
 		for _, g := range orderedProjectGroups(groups, rootKey) {
-			out.Projects = append(out.Projects, projectTreeJSONProject{
+			row := projectTreeJSONProject{
 				Key:   g.Key,
 				Label: g.Label,
 				Tasks: buildProjectTaskTree(g.Tasks),
-			})
+			}
+			if notes := loadProjectTreeNotes(home, g.Key); len(notes) > 0 {
+				row.Notes = notes
+			}
+			out.Projects = append(out.Projects, row)
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetEscapeHTML(false)
 		return enc.Encode(out)
 	}
-	fmt.Print(formatProjectTree(groups, rootKey, color, fancy))
+	fmt.Print(formatProjectTree(home, groups, rootKey, color, fancy))
 	return nil
 }
 
 func runProjectTreeStream(
+	home string,
 	reg storage.ProjectsFile,
 	root *projectGroup,
 	probeDir string,
@@ -994,7 +1000,7 @@ func runProjectTreeStream(
 
 	printed := map[string]struct{}{root.Key: {}}
 	willScan := !noSubDirs
-	taskCount := writeProjectBranch(os.Stdout, byKey[root.Key], !willScan, color, fancy)
+	taskCount := writeProjectBranch(os.Stdout, home, byKey[root.Key], !willScan, color, fancy)
 	projectCount := 1
 	_ = os.Stdout.Sync()
 
@@ -1003,7 +1009,7 @@ func runProjectTreeStream(
 		if pending == nil {
 			return
 		}
-		taskCount += writeProjectBranch(os.Stdout, pending, last, color, fancy)
+		taskCount += writeProjectBranch(os.Stdout, home, pending, last, color, fancy)
 		projectCount++
 		_ = os.Stdout.Sync()
 		pending = nil
@@ -1052,7 +1058,7 @@ func runProjectTreeStream(
 }
 
 // writeProjectBranch writes one root-level project node; returns task count.
-func writeProjectBranch(w *os.File, g *projectGroup, last, color, fancy bool) int {
+func writeProjectBranch(w *os.File, home string, g *projectGroup, last, color, fancy bool) int {
 	tree := buildProjectTaskTree(g.Tasks)
 	idWidth := maxTaskIDWidth(tree)
 	mark := projectMark(fancy)
@@ -1061,7 +1067,7 @@ func writeProjectBranch(w *os.File, g *projectGroup, last, color, fancy bool) in
 		name:  mark + short,
 		extra: formatProjectOriginExtra(origin, color),
 	}
-	node.children = projectTasksToRender(tree, color, idWidth)
+	node.children = prependProjectNotes(loadProjectTreeNotes(home, g.Key), projectTasksToRender(tree, color, idWidth))
 	var b strings.Builder
 	writeRenderKid(&b, node, "", last)
 	fmt.Fprint(w, b.String())
@@ -1342,7 +1348,7 @@ func buildProjectTaskTree(entries []projectTaskEntry) []storage.TopicTreeTask {
 	return out
 }
 
-func formatProjectTree(groups map[string]*projectGroup, rootKey string, color, fancy bool) string {
+func formatProjectTree(home string, groups map[string]*projectGroup, rootKey string, color, fancy bool) string {
 	var b strings.Builder
 	b.WriteString(".\n")
 	ordered := orderedProjectGroups(groups, rootKey)
@@ -1372,7 +1378,7 @@ func formatProjectTree(groups map[string]*projectGroup, rootKey string, color, f
 			name:  mark + short,
 			extra: formatProjectOriginExtra(origin, color),
 		}
-		node.children = projectTasksToRender(tree, color, idWidth)
+		node.children = prependProjectNotes(loadProjectTreeNotes(home, g.Key), projectTasksToRender(tree, color, idWidth))
 		rootKids = append(rootKids, node)
 	}
 	writeRenderKids(&b, rootKids, "")
@@ -1398,6 +1404,41 @@ func countProjectTreeTasks(tasks []storage.TopicTreeTask) int {
 		n += countTaskNode(&tasks[i])
 	}
 	return n
+}
+
+func refFromProjectGroupKey(key string) storage.ProjectRef {
+	if strings.HasPrefix(key, "name:") {
+		return storage.ProjectRef{Name: strings.TrimPrefix(key, "name:")}
+	}
+	return storage.ProjectRef{Origin: key}
+}
+
+// loadProjectTreeNotes reads project notes for a tree branch. Missing id or
+// journal is a silent omit (tree still prints tasks).
+func loadProjectTreeNotes(home, groupKey string) []storage.TopicNote {
+	if home == "" || strings.TrimSpace(groupKey) == "" {
+		return nil
+	}
+	id, ok, err := storage.LookupProjectID(home, refFromProjectGroupKey(groupKey))
+	if err != nil || !ok {
+		return nil
+	}
+	notes, err := storage.ReadTopicNotes(storage.ProjectNotesDir(home, id))
+	if err != nil || len(notes) == 0 {
+		return nil
+	}
+	return notes
+}
+
+func prependProjectNotes(notes []storage.TopicNote, kids []*renderNode) []*renderNode {
+	if len(notes) == 0 {
+		return kids
+	}
+	notesNode := &renderNode{name: "notes"}
+	for _, n := range notes {
+		notesNode.children = append(notesNode.children, &renderNode{name: formatNoteLine(n)})
+	}
+	return append([]*renderNode{notesNode}, kids...)
 }
 
 func projectTasksToRender(tasks []storage.TopicTreeTask, color bool, idWidth int) []*renderNode {

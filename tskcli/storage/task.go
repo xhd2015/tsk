@@ -321,20 +321,26 @@ func MoveTaskDir(home string, task *Task, oldDir string, topicParts []string) (s
 	return newAbs, nil
 }
 
-// DeleteTask permanently removes a task directory and its index entry.
-// Nested sub-tasks require recursive=true (whole subtree). Without recursive,
-// presence of any immediate nested task directory is an error.
-// Task IDs are never reused (monotonic counter), so no tombstone is written.
-func DeleteTask(home string, id int, recursive bool) error {
+// DeletePlan is the observed set of tasks a delete would remove.
+// Tasks are parent-first (WalkTaskDirs order).
+type DeletePlan struct {
+	Dir   string
+	Tasks []Task
+}
+
+// PlanDelete validates a delete and lists tasks that would be removed.
+// Nested sub-tasks require recursive=true. Without recursive, presence of any
+// immediate nested task directory is an error. No files are written.
+func PlanDelete(home string, id int, recursive bool) (DeletePlan, error) {
 	_, taskDir, err := LoadTaskByID(home, id)
 	if err != nil {
-		return err
+		return DeletePlan{}, err
 	}
 
 	var immediate []int
 	entries, err := os.ReadDir(taskDir)
 	if err != nil {
-		return fmt.Errorf("read task dir: %w", err)
+		return DeletePlan{}, fmt.Errorf("read task dir: %w", err)
 	}
 	for _, ent := range entries {
 		if !ent.IsDir() || !IsTaskDirName(ent.Name()) {
@@ -348,23 +354,39 @@ func DeleteTask(home string, id int, recursive bool) error {
 	}
 	sort.Ints(immediate)
 	if len(immediate) > 0 && !recursive {
-		return fmt.Errorf("tsk delete: task %d has nested tasks %v; use --recursive", id, immediate)
+		return DeletePlan{}, fmt.Errorf("tsk delete: task %d has nested tasks %v; use --recursive", id, immediate)
 	}
 
-	var ids []int
+	var tasks []Task
 	if err := WalkTaskDirs(taskDir, func(_ string, t Task) error {
-		ids = append(ids, t.ID)
+		tasks = append(tasks, t)
 		return nil
 	}); err != nil {
+		return DeletePlan{}, err
+	}
+	return DeletePlan{Dir: taskDir, Tasks: tasks}, nil
+}
+
+// DeleteTask permanently removes a task directory and its index entry.
+// Nested sub-tasks require recursive=true (whole subtree). Without recursive,
+// presence of any immediate nested task directory is an error.
+// Task IDs are never reused (monotonic counter), so no tombstone is written.
+func DeleteTask(home string, id int, recursive bool) error {
+	plan, err := PlanDelete(home, id, recursive)
+	if err != nil {
 		return err
 	}
+	return ApplyDelete(home, plan)
+}
 
-	for _, rid := range ids {
-		if err := os.Remove(indexPath(home, rid)); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("remove index/%d: %w", rid, err)
+// ApplyDelete removes index entries and the task directory from a PlanDelete.
+func ApplyDelete(home string, plan DeletePlan) error {
+	for _, t := range plan.Tasks {
+		if err := os.Remove(indexPath(home, t.ID)); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove index/%d: %w", t.ID, err)
 		}
 	}
-	if err := os.RemoveAll(taskDir); err != nil {
+	if err := os.RemoveAll(plan.Dir); err != nil {
 		return fmt.Errorf("delete task dir: %w", err)
 	}
 	return nil
