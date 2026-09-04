@@ -45,8 +45,8 @@ func mergeChannelFlag(name, parent, leaf string) (string, error) {
 	return parent, nil
 }
 
-func runChannel(home string, args []string) error {
-	setCommand(currentCtx, "channel", args)
+func runChannel(invk *invocation, args []string) error {
+	invk.setCommand("channel", args)
 
 	var opts channelOpts
 	remaining, err := lessflags.
@@ -67,7 +67,7 @@ func runChannel(home string, args []string) error {
 	}
 	switch remaining[0] {
 	case "create":
-		return runChannelCreate(home, opts, remaining[1:])
+		return runChannelCreate(invk, opts, remaining[1:])
 	case "list":
 		if opts.channelID != "" {
 			return channelFail(fmt.Errorf("tsk channel list: --channel-id not accepted"))
@@ -75,19 +75,19 @@ func runChannel(home string, args []string) error {
 		if opts.user != "" {
 			return channelFail(fmt.Errorf("tsk channel list: --user not accepted"))
 		}
-		return runChannelList(home, remaining[1:])
+		return runChannelList(invk, remaining[1:])
 	case "archive":
-		return runChannelArchive(home, opts, remaining[1:])
+		return runChannelArchive(invk, opts, remaining[1:])
 	case "delete":
-		return runChannelDelete(home, opts, remaining[1:])
+		return runChannelDelete(invk, opts, remaining[1:])
 	case "send":
-		return runChannelSend(home, opts, remaining[1:])
+		return runChannelSend(invk, opts, remaining[1:])
 	case "messages":
-		return runChannelMessages(home, opts, remaining[1:])
+		return runChannelMessages(invk, opts, remaining[1:])
 	case "participants":
-		return runChannelParticipants(home, opts, remaining[1:])
+		return runChannelParticipants(invk, opts, remaining[1:])
 	case "participant":
-		return runChannelParticipant(home, opts, remaining[1:])
+		return runChannelParticipant(invk, opts, remaining[1:])
 	default:
 		return channelFail(fmt.Errorf("tsk channel: unknown subcommand %q", remaining[0]))
 	}
@@ -111,8 +111,9 @@ func channelSuccess(word string, tty bool) string {
 	return word
 }
 
-func runChannelCreate(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"create"}, args...))
+func runChannelCreate(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"create"}, args...))
 
 	var channelID, userHandle string
 	remaining, err := lessflags.
@@ -168,12 +169,14 @@ func runChannelCreate(home string, opts channelOpts, args []string) error {
 	if err != nil {
 		return channelFail(err)
 	}
+	invk.setData(storage.EventData{ChannelID: ch.ID, Name: name})
 	fmt.Println(ch.ID)
 	return nil
 }
 
-func runChannelList(home string, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"list"}, args...))
+func runChannelList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"list"}, args...))
 
 	var all, asJSON bool
 	remaining, err := lessflags.
@@ -234,8 +237,9 @@ func runChannelList(home string, args []string) error {
 	return nil
 }
 
-func runChannelArchive(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"archive"}, args...))
+func runChannelArchive(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"archive"}, args...))
 
 	if opts.user != "" {
 		return channelFail(fmt.Errorf("tsk channel archive: --user not accepted"))
@@ -263,6 +267,7 @@ func runChannelArchive(home string, opts channelOpts, args []string) error {
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel archive: --channel-id required"))
 	}
+	invk.setData(storage.EventData{ChannelID: channelID})
 
 	store, err := openChannelStore(home)
 	if err != nil {
@@ -275,8 +280,9 @@ func runChannelArchive(home string, opts channelOpts, args []string) error {
 	return nil
 }
 
-func runChannelDelete(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"delete"}, args...))
+func runChannelDelete(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"delete"}, args...))
 
 	if opts.user != "" {
 		return channelFail(fmt.Errorf("tsk channel delete: --user not accepted"))
@@ -304,6 +310,7 @@ func runChannelDelete(home string, opts channelOpts, args []string) error {
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel delete: --channel-id required"))
 	}
+	invk.setData(storage.EventData{ChannelID: channelID})
 
 	store, err := openChannelStore(home)
 	if err != nil {
@@ -316,8 +323,9 @@ func runChannelDelete(home string, opts channelOpts, args []string) error {
 	return nil
 }
 
-func runChannelSend(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"send"}, args...))
+func runChannelSend(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"send"}, args...))
 
 	var channelID, userHandle string
 	remaining, err := lessflags.
@@ -347,6 +355,7 @@ func runChannelSend(home string, opts channelOpts, args []string) error {
 		return channelFail(fmt.Errorf("tsk channel send: message required"))
 	}
 	body := strings.Join(remaining, " ")
+	invk.setData(storage.EventData{ChannelID: channelID, Text: body})
 
 	store, err := openChannelStore(home)
 	if err != nil {
@@ -364,12 +373,14 @@ func runChannelSend(home string, opts channelOpts, args []string) error {
 	if err != nil {
 		return channelFail(err)
 	}
+	invk.setData(storage.EventData{MessageID: msg.ID})
 	fmt.Printf("sent message %s\n", channelSuccess(fmt.Sprintf("%d", msg.ID), isStdoutTTY()))
 	return nil
 }
 
-func runChannelMessages(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"messages"}, args...))
+func runChannelMessages(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"messages"}, args...))
 
 	var channelID, userHandle string
 	var limit int
@@ -402,6 +413,7 @@ func runChannelMessages(home string, opts channelOpts, args []string) error {
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel messages: --channel-id required"))
 	}
+	invk.setData(storage.EventData{ChannelID: channelID})
 
 	store, err := openChannelStore(home)
 	if err != nil {
@@ -446,8 +458,9 @@ func runChannelMessages(home string, opts channelOpts, args []string) error {
 	return nil
 }
 
-func runChannelParticipants(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"participants"}, args...))
+func runChannelParticipants(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"participants"}, args...))
 
 	var channelID, userHandle string
 	var asJSON bool
@@ -478,6 +491,7 @@ func runChannelParticipants(home string, opts channelOpts, args []string) error 
 	if channelID == "" {
 		return channelFail(fmt.Errorf("tsk channel participants: --channel-id required"))
 	}
+	invk.setData(storage.EventData{ChannelID: channelID})
 
 	store, err := openChannelStore(home)
 	if err != nil {
@@ -510,8 +524,8 @@ func runChannelParticipants(home string, opts channelOpts, args []string) error 
 	return nil
 }
 
-func runChannelParticipant(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"participant"}, args...))
+func runChannelParticipant(invk *invocation, opts channelOpts, args []string) error {
+	invk.setCommand("channel", append([]string{"participant"}, args...))
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(channelParticipantHelp())
@@ -519,9 +533,9 @@ func runChannelParticipant(home string, opts channelOpts, args []string) error {
 	}
 	switch args[0] {
 	case "add":
-		return runChannelParticipantAdd(home, opts, args[1:])
+		return runChannelParticipantAdd(invk, opts, args[1:])
 	case "remove":
-		return runChannelParticipantRemove(home, opts, args[1:])
+		return runChannelParticipantRemove(invk, opts, args[1:])
 	default:
 		return channelFail(fmt.Errorf("tsk channel participant: unknown subcommand %q", args[0]))
 	}
@@ -536,8 +550,9 @@ func requireParticipant(parts []chpkg.Participant, channelID, handle string) err
 	return fmt.Errorf("%q is not a participant in channel %q", handle, channelID)
 }
 
-func runChannelParticipantAdd(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"participant", "add"}, args...))
+func runChannelParticipantAdd(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"participant", "add"}, args...))
 
 	var channelID, userHandle string
 	remaining, err := lessflags.
@@ -567,6 +582,7 @@ func runChannelParticipantAdd(home string, opts channelOpts, args []string) erro
 		return channelFail(fmt.Errorf("tsk channel participant add: handle required"))
 	}
 	handle := remaining[0]
+	invk.setData(storage.EventData{ChannelID: channelID, Handle: handle})
 
 	store, err := openChannelStore(home)
 	if err != nil {
@@ -593,8 +609,9 @@ func runChannelParticipantAdd(home string, opts channelOpts, args []string) erro
 	return nil
 }
 
-func runChannelParticipantRemove(home string, opts channelOpts, args []string) error {
-	setCommand(currentCtx, "channel", append([]string{"participant", "remove"}, args...))
+func runChannelParticipantRemove(invk *invocation, opts channelOpts, args []string) error {
+	home := invk.home
+	invk.setCommand("channel", append([]string{"participant", "remove"}, args...))
 
 	var channelID, userHandle string
 	remaining, err := lessflags.
@@ -641,6 +658,7 @@ func runChannelParticipantRemove(home string, opts channelOpts, args []string) e
 	} else {
 		return channelFail(fmt.Errorf("tsk channel participant remove: unexpected arguments"))
 	}
+	invk.setData(storage.EventData{ChannelID: channelID, Handle: target})
 
 	if err := store.RemoveParticipant(context.Background(), chpkg.ParticipantChangeRequest{
 		ChannelID: channelID,

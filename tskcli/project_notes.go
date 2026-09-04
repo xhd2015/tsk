@@ -10,8 +10,8 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runProjectNotes(home string, args []string) error {
-	setCommand(currentCtx, "project", append([]string{"notes"}, args...))
+func runProjectNotes(invk *invocation, args []string) error {
+	invk.setCommand("project", append([]string{"notes"}, args...))
 
 	if len(args) > 0 {
 		switch args[0] {
@@ -19,17 +19,17 @@ func runProjectNotes(home string, args []string) error {
 			fmt.Print(projectNotesHelp())
 			return nil
 		case "add":
-			return runProjectNotesAdd(home, args[1:])
+			return runProjectNotesAdd(invk, args[1:])
 		case "list":
-			return runProjectNotesList(home, args[1:])
+			return runProjectNotesList(invk, args[1:])
 		case "edit":
-			return runProjectNotesEdit(home, args[1:])
+			return runProjectNotesEdit(invk, args[1:])
 		case "delete":
-			return runProjectNotesDelete(home, args[1:])
+			return runProjectNotesDelete(invk, args[1:])
 		}
 	}
 	// Bare `tsk project notes` lists.
-	return runProjectNotesList(home, args)
+	return runProjectNotesList(invk, args)
 }
 
 func resolveNotesProject(home, dirFlag, nameFlag, projectFlag string) (cwd string, ref storage.ProjectRef, err error) {
@@ -68,8 +68,9 @@ func ensureNotesDir(home, dirFlag, nameFlag, projectFlag string) (notesDir strin
 	return storage.ProjectNotesDir(home, id), nil
 }
 
-func runProjectNotesAdd(home string, args []string) error {
-	setCommand(currentCtx, "project", append([]string{"notes", "add"}, args...))
+func runProjectNotesAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("project", append([]string{"notes", "add"}, args...))
 
 	var dirFlag, nameFlag, projectFlag string
 	var labels []string
@@ -104,9 +105,10 @@ func runProjectNotesAdd(home string, args []string) error {
 	if err != nil {
 		return projectFail(err)
 	}
+	text := joinArgs(remaining)
 	note := storage.TopicNote{
 		TS:   storage.NowTimestamp(len(existing) + 1),
-		Text: joinArgs(remaining),
+		Text: text,
 	}
 	if len(labels) > 0 {
 		note.Labels = labels
@@ -114,12 +116,19 @@ func runProjectNotesAdd(home string, args []string) error {
 	if err := storage.AppendTopicNote(notesDir, note); err != nil {
 		return projectFail(err)
 	}
+	invk.setData(storage.EventData{
+		Name:    firstNonEmpty(nameFlag, projectFlag),
+		Project: firstNonEmpty(projectFlag, nameFlag),
+		Text:    text,
+		Labels:  labels,
+	})
 	fmt.Println("added note")
 	return nil
 }
 
-func runProjectNotesList(home string, args []string) error {
-	setCommand(currentCtx, "project", append([]string{"notes", "list"}, args...))
+func runProjectNotesList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("project", append([]string{"notes", "list"}, args...))
 
 	var dirFlag, nameFlag, projectFlag string
 	var labels []string
@@ -158,6 +167,10 @@ func runProjectNotesList(home string, args []string) error {
 	if err != nil {
 		return projectFail(err)
 	}
+	invk.setData(storage.EventData{
+		Name:    firstNonEmpty(nameFlag, projectFlag),
+		Project: firstNonEmpty(projectFlag, nameFlag),
+	})
 	notes, err := storage.ReadTopicNotes(notesDir)
 	if err != nil {
 		return projectFail(err)
@@ -166,8 +179,9 @@ func runProjectNotesList(home string, args []string) error {
 	return printNotes(notes, asJSON, showIndex)
 }
 
-func runProjectNotesEdit(home string, args []string) error {
-	setCommand(currentCtx, "project", append([]string{"notes", "edit"}, args...))
+func runProjectNotesEdit(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("project", append([]string{"notes", "edit"}, args...))
 
 	var dirFlag, nameFlag, projectFlag, indexStr string
 	var labels []string
@@ -236,6 +250,13 @@ func runProjectNotesEdit(home string, args []string) error {
 
 	targetIdx := filteredIdxs[index-1]
 	newText := joinArgs(remaining)
+	invk.setData(storage.EventData{
+		Name:    firstNonEmpty(nameFlag, projectFlag),
+		Project: firstNonEmpty(projectFlag, nameFlag),
+		Index:   index,
+		Text:    newText,
+		Labels:  labels,
+	})
 	if appendMode {
 		notes[targetIdx].Text = notes[targetIdx].Text + newText
 	} else {
@@ -248,8 +269,9 @@ func runProjectNotesEdit(home string, args []string) error {
 	return nil
 }
 
-func runProjectNotesDelete(home string, args []string) error {
-	setCommand(currentCtx, "project", append([]string{"notes", "delete"}, args...))
+func runProjectNotesDelete(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("project", append([]string{"notes", "delete"}, args...))
 
 	var dirFlag, nameFlag, projectFlag, indexStr string
 	var labels []string
@@ -283,6 +305,12 @@ func runProjectNotesDelete(home string, args []string) error {
 	if err != nil || index <= 0 {
 		return projectFail(fmt.Errorf("tsk project notes delete: --index must be a positive integer"))
 	}
+	invk.setData(storage.EventData{
+		Name:    firstNonEmpty(nameFlag, projectFlag),
+		Project: firstNonEmpty(projectFlag, nameFlag),
+		Index:   index,
+		Labels:  labels,
+	})
 
 	notesDir, err := ensureNotesDir(home, dirFlag, nameFlag, projectFlag)
 	if err != nil {

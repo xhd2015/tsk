@@ -8,7 +8,7 @@ listing and filtering, show/status display, stage transitions (advance, stage,
 clarify, followup, done), permanent **delete** (optional `--recursive` for
 nested sub-tasks), topic management, label management, `next` selection,
 Slack-like **channel** spaces (create/list/archive/delete, send, messages,
-participants), append-only `events.jsonl` auditing, task **progress**
+participants), append-only `events.jsonl` auditing (`tsk logs`), task **progress**
 entries with optional status, a **search** command over titles/notes/progress/topic
 notes, and a global **tree** view of all tasks organized by topic.
 
@@ -20,7 +20,8 @@ notes, and a global **tree** view of all tasks organized by topic.
 - **Work root** — temp directory per leaf; holds isolated `TSK_HOME`.
 - **counter** — plain-text monotonic integer at `{TSK_HOME}/counter`; flock on read-modify-write for ID allocation.
 - **index/<id>** — UTF-8 single line: relative path from `TSK_HOME` to task directory; updated on create and topic move (not on stage change); atomic write via temp + rename.
-- **events.jsonl** — append-only audit log; one JSON object per CLI invocation (success or failure).
+- **events.jsonl** — append-only audit log; one JSON object per CLI invocation (success or failure) except `tsk logs` itself and empty-command help/unknown. Fields: `ts` (RFC3339 local offset; `TSK_DATE` → `YYYY-MM-DDT12:00:00+08:00`), `command`, `action` (dotted), `args`, `exit_code`, `user` (`TSK_USER` else `$USER`), `mutation`, optional `data` (resolved operands: `task_id`, `text`, …).
+- **logs** — `tsk logs [--all] [--limit N] [--json]` lists events (oldest first). Default: `mutation==true` (legacy rows without `action` classified from command/args). Human: `ts  ok|fail  action  task=N …` plus `N log(s)` footer; `--json` array, no ANSI.
 - **Task directory** — name `[id]-<slug>/` under `inbox/` (no topic), `topics/<path>/` (topic tree), or nested under a parent task dir; contains `task.json`, `context/` (empty on create), and `clarify/` (during clarification with `batch.json`).
 - **task.json** — metadata: `id`, `title`, `slug`, `labels` (sorted), `topic_path` (null in inbox), optional `parent_id` (nested sub-tasks), optional `cwd` (CLI recording directory), optional `project` `{id,name}` (canonical origin key + basename), `stage`, `created_at`, `updated_at`, `stage_history`.
 - **project** — `tsk project add|tree|list|which|register|unregister|notes`. Prefer `project.origin` on tasks when git remote exists; else registered `project.name`. Manual registry `projects.json` and auto ledger `projects-auto.json` share integer `id`s from `project-counter` (assigned on register / auto insert; reuse across files for the same origin/name key). Auto upsert on add/notes ensure; main-repo `location` only, tilde-form; local-TZ `first_seen_at`/`last_seen_at`; legacy ledger `cwd` migrated to `location` on read. `list` default/`--all` = union auto+registered with `tasks=` and `LOCATION` column; `--json` includes `location`; `--auto` / `--registered` select one source; `--active` filters. `show` prints task `cwd:` in tilde form and `project: <location>` when resolvable, else name, else origin. `tree` = task forest; default also scans nested git dirs (max depth 3) via `scan_repo` and streams root-first (`--streaming` default; `--no-streaming` buffers). Project notes print as a `notes` group under each project node (before tasks; omitted when empty; `--json` `notes` array omitempty). `project notes` list/add/edit/delete under `projects/<id>/notes.jsonl` (same journal as task notes; bare `notes` lists). No mark import.
@@ -261,6 +262,17 @@ tsk tests
 │   └── filter/                   # --stage create filters ids
 ├── events/                       # events.jsonl audit
 │   └── append/                   # any command appends one line
+├── logs/                         # tsk logs activity feed
+│   ├── empty/                    # no events → 0 logs
+│   ├── default-mutations/        # add+list → only add
+│   ├── all/                      # --all includes list
+│   ├── nested-note/              # note.add shown; note.list hidden
+│   ├── json/                     # --json array; data.text; local +08:00 ts
+│   ├── limit/                    # --limit 1 last mutation
+│   ├── recording-skip/           # logs does not append
+│   ├── fail/                     # failed done still listed
+│   ├── help/
+│   └── error/limit-negative/
 ├── help/                         # --help / -h at every level
 │   ├── root-empty/               # no args → top help
 │   ├── root-flag/                # --help → top help
@@ -469,6 +481,16 @@ tsk tests
 | 13 | show/basic | `tsk show <id>` → metadata block with title, stage, labels |
 | 14 | list/filter | `tsk list --stage create` → matching ids one per line |
 | 15 | events/append | `tsk add` → `events.jsonl` gains one audit line |
+| 15a | logs/empty | `tsk logs` on empty home → `0 logs` |
+| 15b | logs/default-mutations | add+list → default logs shows only add |
+| 15c | logs/all | `--all` includes list |
+| 15d | logs/nested-note | `note.add` shown; `note.list` hidden |
+| 15e | logs/json | `--json` has `data.text`, `+08:00` ts, `user` |
+| 15f | logs/limit | `--limit 1` last mutation |
+| 15g | logs/recording-skip | `tsk logs` does not append |
+| 15h | logs/fail | failed `done` listed as `fail` |
+| 15i | logs/help | `logs -h` documents flags |
+| 15j | logs/error/limit-negative | `--limit -1` → `Error:` |
 | 16 | help/root-empty | `tsk` (no args) → exit 0; stdout has `Usage:` + command list; stderr empty |
 | 17 | help/root-flag | `tsk --help` → exit 0; top help on stdout; stderr empty |
 | 18 | help/root-h | `tsk -h` → exit 0; stdout contains `Usage:` |
@@ -545,6 +567,7 @@ doctest test ./tests/status
 doctest test ./tests/show
 doctest test ./tests/list
 doctest test ./tests/events
+doctest test ./tests/logs
 doctest test ./tests/help
 doctest test ./tests/ux
 doctest test ./tests/channel
@@ -612,6 +635,7 @@ doctest test ./tests/status/auto-format/force-color-blocks-auto
 doctest test ./tests/show/basic
 doctest test ./tests/list/filter
 doctest test ./tests/events/append
+doctest test ./tests/logs/default-mutations
 doctest test ./tests/help/root-empty
 doctest test ./tests/help/root-flag
 doctest test ./tests/help/root-h

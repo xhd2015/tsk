@@ -12,8 +12,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runTopicView(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"view"}, args...))
+func runTopicView(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"view"}, args...))
 
 	var asJSON bool
 	remaining, err := lessflags.
@@ -34,6 +35,7 @@ func runTopicView(home string, args []string) error {
 	if err != nil {
 		return topicErr("%s", err.Error())
 	}
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts)})
 	tree, err := storage.LoadTopicTree(home, parts)
 	if err != nil {
 		return fail(err)
@@ -50,8 +52,8 @@ func runTopicView(home string, args []string) error {
 type viewNode struct {
 	name  string
 	extra string
-	mark  string // kind prefix e.g. "▣ " / "# "; drawn dim when color
-	style string // ANSI SGR prefix for name+extra; empty = unstyled
+	mark  string     // kind prefix e.g. "▣ " / "# "; drawn dim when color
+	style string     // ANSI SGR prefix for name+extra; empty = unstyled
 	kids  []viewNode // explicit children (project groups, tasks, subtopics)
 	color bool
 }

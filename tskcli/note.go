@@ -11,8 +11,8 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runNote(home string, args []string) error {
-	setCommand(currentCtx, "note", args)
+func runNote(invk *invocation, args []string) error {
+	invk.setCommand("note", args)
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(noteHelp())
@@ -20,11 +20,11 @@ func runNote(home string, args []string) error {
 	}
 	switch args[0] {
 	case "add":
-		return runNoteAdd(home, args[1:])
+		return runNoteAdd(invk, args[1:])
 	case "list":
-		return runNoteList(home, args[1:])
+		return runNoteList(invk, args[1:])
 	case "edit":
-		return runNoteEdit(home, args[1:])
+		return runNoteEdit(invk, args[1:])
 	default:
 		return noteErr("tsk note: unknown subcommand %q", args[0])
 	}
@@ -80,8 +80,9 @@ func validateNoteLabels(cmd string, labels []string) error {
 	return nil
 }
 
-func runNoteAdd(home string, args []string) error {
-	setCommand(currentCtx, "note", append([]string{"add"}, args...))
+func runNoteAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("note", append([]string{"add"}, args...))
 
 	var idStr string
 	var labels []string
@@ -115,9 +116,10 @@ func runNoteAdd(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	text := joinArgs(remaining)
 	note := storage.TopicNote{
 		TS:   storage.NowTimestamp(len(existing) + 1),
-		Text: joinArgs(remaining),
+		Text: text,
 	}
 	if len(labels) > 0 {
 		note.Labels = labels
@@ -125,12 +127,14 @@ func runNoteAdd(home string, args []string) error {
 	if err := storage.AppendTopicNote(dir, note); err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id, Text: text, Labels: labels})
 	fmt.Println("added note")
 	return nil
 }
 
-func runNoteList(home string, args []string) error {
-	setCommand(currentCtx, "note", append([]string{"list"}, args...))
+func runNoteList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("note", append([]string{"list"}, args...))
 
 	var idStr string
 	var labels []string
@@ -165,6 +169,7 @@ func runNoteList(home string, args []string) error {
 	if err != nil {
 		return err
 	}
+	invk.setData(storage.EventData{TaskID: id})
 	dir, err := loadTaskDir(home, id)
 	if err != nil {
 		return err
@@ -197,8 +202,9 @@ func printNotes(notes []storage.TopicNote, asJSON bool, showIndex bool) error {
 	return nil
 }
 
-func runNoteEdit(home string, args []string) error {
-	setCommand(currentCtx, "note", append([]string{"edit"}, args...))
+func runNoteEdit(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("note", append([]string{"edit"}, args...))
 
 	var idStr string
 	var labels []string
@@ -270,6 +276,7 @@ func runNoteEdit(home string, args []string) error {
 
 	targetIdx := filteredIdxs[index-1]
 	newText := joinArgs(remaining)
+	invk.setData(storage.EventData{TaskID: id, Index: index, Text: newText, Labels: labels})
 	if appendMode {
 		notes[targetIdx].Text = notes[targetIdx].Text + newText
 	} else {

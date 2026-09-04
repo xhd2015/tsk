@@ -10,8 +10,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runFollowup(home string, args []string) error {
-	setCommand(currentCtx, "followup", args)
+func runFollowup(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("followup", args)
 
 	remaining, err := lessflags.
 		Help("-h,--help", followupHelp()).
@@ -34,6 +35,7 @@ func runFollowup(home string, args []string) error {
 	if len(remaining) > 2 {
 		message = joinArgs(remaining[1:])
 	}
+	invk.setData(storage.EventData{TaskID: id, Text: message})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
@@ -57,5 +59,6 @@ func runFollowup(home string, args []string) error {
 		return err
 	}
 
+	invk.setData(storage.EventData{Stage: "user_followup"})
 	return storage.SetTaskStage(&task, taskDir, "user_followup", "")
 }

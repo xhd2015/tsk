@@ -55,8 +55,9 @@ type searchHit struct {
 	Status string   `json:"status,omitempty"`
 }
 
-func runSearch(home string, args []string) error {
-	setCommand(currentCtx, "search", args)
+func runSearch(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("search", args)
 
 	var kinds lessflags.Flags
 	var asJSON bool
@@ -90,6 +91,7 @@ func runSearch(home string, args []string) error {
 	if query == "" {
 		return searchErr("tsk search: query required")
 	}
+	invk.setData(storage.EventData{Query: query})
 
 	want := resolveSearchKinds(kinds)
 	hits, err := collectSearchHits(home, query, want)

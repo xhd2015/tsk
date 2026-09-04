@@ -21,7 +21,7 @@ Default root: `~/.tsk` (override with `TSK_HOME`).
 | `index/<id>` | One-line relative path to the task directory |
 | `inbox/` | Tasks with `topic_path: null` |
 | `topics/<seg>/…` | Topic tree; may hold `topic.json`, notes, subtopics, tasks |
-| `events.jsonl` | Append-only CLI audit log |
+| `events.jsonl` | Append-only CLI audit log (RFC3339 local offset; `tsk logs`) |
 | `channels/` | Channel spaces (see `channel` topic) |
 
 ## Task directory
@@ -53,5 +53,5 @@ Reserved non-task children: `context`, `clarify` (and note/progress jsonl files 
 ## Env
 
 - `TSK_HOME` — storage root
-- `TSK_DATE=YYYY-MM-DD` — deterministic timestamps (tests)
-- `TSK_USER` — channel identity fallback (see `channel`)
+- `TSK_DATE=YYYY-MM-DD` — deterministic timestamps (tests); event `ts` uses `…T12:00:00+08:00`
+- `TSK_USER` — event `user` and channel identity fallback (see `channel`)

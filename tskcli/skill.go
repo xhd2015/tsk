@@ -17,8 +17,8 @@ func singleSkill() *skillcmd.SingleSkill {
 	}
 }
 
-func runSkill(home string, args []string) error {
-	setCommand(currentCtx, "skill", args)
+func runSkill(invk *invocation, args []string) error {
+	invk.setCommand("skill", args)
 	if err := singleSkill().Handle(args); err != nil {
 		return fail(fmt.Errorf("tsk skill: %w", err))
 	}

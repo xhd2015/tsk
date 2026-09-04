@@ -6,14 +6,15 @@ import (
 	"os"
 	"strings"
 
-	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/agent-pro/agent/agentrunner"
+	lessflags "github.com/xhd2015/less-flags"
 	"github.com/xhd2015/tsk/tskcli/pipeline"
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runStatus(home string, args []string) error {
-	setCommand(currentCtx, "status", args)
+func runStatus(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("status", args)
 
 	// Use *string / presence-sensitive bools so we can distinguish
 	// "flag absent" from "flag present" for auto format defaulting.
@@ -48,6 +49,7 @@ func runStatus(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {

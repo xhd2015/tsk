@@ -14,8 +14,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runTree(home string, args []string) error {
-	setCommand(currentCtx, "tree", args)
+func runTree(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("tree", args)
 
 	var asJSON bool
 	var colorFlag bool
@@ -46,6 +47,7 @@ func runTree(home string, args []string) error {
 		if err != nil {
 			return fail(err)
 		}
+		invk.setData(storage.EventData{TaskID: id})
 		return runTreeID(home, id, asJSON, color, fancy)
 	}
 

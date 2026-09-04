@@ -26,6 +26,7 @@ Commands:
   note       add or list timestamped notes on a task
   progress   record and list progress entries on a task
   search     search task titles and note/progress/topic text
+  logs       show CLI activity (user mutations by default)
   tree       print all tasks organized by topic tree
   project    project-scoped tasks and registry (add/tree/list/register)
   install    install convenience CLI wrappers (e.g. pmark)
@@ -608,6 +609,19 @@ Flags:
   --all        search all surfaces (default when none given)
   --color      force ANSI color on (even when stdout is not a TTY)
   --no-color   force ANSI color off
+  --json       JSON array (no ANSI)
+  -h, --help   show this help
+`
+}
+
+func logsHelp() string {
+	return `Usage: tsk logs [--all] [--limit N] [--json]
+
+Show CLI activity from events.jsonl (default: user mutations only).
+
+Flags:
+  --all        include reads and meta commands
+  --limit N    last N matching entries (0 = all)
   --json       JSON array (no ANSI)
   -h, --help   show this help
 `

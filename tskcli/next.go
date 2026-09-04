@@ -8,8 +8,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runNext(home string, args []string) error {
-	setCommand(currentCtx, "next", args)
+func runNext(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("next", args)
 
 	remaining, err := lessflags.
 		Help("-h,--help", nextHelp()).

@@ -12,8 +12,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runAdd(home string, args []string) error {
-	setCommand(currentCtx, "add", args)
+func runAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("add", args)
 
 	var labels []string
 	var notes []string
@@ -150,6 +151,14 @@ func runAdd(home string, args []string) error {
 			return fail(fmt.Errorf("tsk add: append note: %w", err))
 		}
 	}
+	ev := storage.EventData{TaskID: id, Title: title, Labels: labels, Notes: notes}
+	if parentID != 0 {
+		ev.ParentID = parentID
+	}
+	if len(topicParts) > 0 {
+		ev.Topic = storage.JoinTopicPath(topicParts)
+	}
+	invk.setData(ev)
 	fmt.Println(id)
 	return nil
 }

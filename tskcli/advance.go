@@ -8,8 +8,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runAdvance(home string, args []string) error {
-	setCommand(currentCtx, "advance", args)
+func runAdvance(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("advance", args)
 
 	var note string
 	remaining, err := lessflags.
@@ -30,6 +31,7 @@ func runAdvance(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id, Text: note})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
@@ -39,5 +41,6 @@ func runAdvance(home string, args []string) error {
 		return fail(err)
 	}
 	to, _ := storage.CanAdvance(task.Stage)
+	invk.setData(storage.EventData{Stage: to})
 	return storage.SetTaskStage(&task, taskDir, to, note)
 }

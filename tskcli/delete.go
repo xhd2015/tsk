@@ -8,8 +8,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runDelete(home string, args []string) error {
-	setCommand(currentCtx, "delete", args)
+func runDelete(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("delete", args)
 
 	var recursive, dryRun bool
 	remaining, err := lessflags.
@@ -30,6 +31,10 @@ func runDelete(home string, args []string) error {
 	id, err := parseID(remaining[0])
 	if err != nil {
 		return fail(err)
+	}
+	invk.setData(storage.EventData{TaskID: id})
+	if dryRun {
+		invk.setMutation(false)
 	}
 
 	plan, err := storage.PlanDelete(home, id, recursive)

@@ -31,8 +31,8 @@ func projectFail(err error) error {
 	return fmt.Errorf("Error: %s", msg)
 }
 
-func runProject(home string, args []string) error {
-	setCommand(currentCtx, "project", args)
+func runProject(invk *invocation, args []string) error {
+	invk.setCommand("project", args)
 
 	remaining, err := lessflags.
 		Help("-h,--help", projectHelp()).
@@ -50,25 +50,26 @@ func runProject(home string, args []string) error {
 	}
 	switch remaining[0] {
 	case "add":
-		return runProjectAdd(home, remaining[1:])
+		return runProjectAdd(invk, remaining[1:])
 	case "tree":
-		return runProjectTree(home, remaining[1:])
+		return runProjectTree(invk, remaining[1:])
 	case "list":
-		return runProjectRegistryList(home, remaining[1:])
+		return runProjectRegistryList(invk, remaining[1:])
 	case "which":
-		return runProjectWhich(home, remaining[1:])
+		return runProjectWhich(invk, remaining[1:])
 	case "register":
-		return runProjectRegister(home, remaining[1:])
+		return runProjectRegister(invk, remaining[1:])
 	case "unregister":
-		return runProjectUnregister(home, remaining[1:])
+		return runProjectUnregister(invk, remaining[1:])
 	case "notes":
-		return runProjectNotes(home, remaining[1:])
+		return runProjectNotes(invk, remaining[1:])
 	default:
 		return projectFail(fmt.Errorf("tsk project: unknown subcommand %q", remaining[0]))
 	}
 }
 
-func runProjectAdd(home string, args []string) error {
+func runProjectAdd(invk *invocation, args []string) error {
+	home := invk.home
 	var dirFlag, projectName string
 	var notes []string
 	remaining, err := lessflags.
@@ -156,6 +157,12 @@ func runProjectAdd(home string, args []string) error {
 	if err := storage.UpsertProjectAuto(home, ref, autoCwd); err != nil {
 		return projectFail(fmt.Errorf("tsk project add: update projects-auto: %w", err))
 	}
+	invk.setData(storage.EventData{
+		TaskID:  id,
+		Title:   title,
+		Project: storage.ProjectRefKey(&ref),
+		Notes:   notes,
+	})
 	fmt.Println(id)
 	return nil
 }
@@ -212,7 +219,8 @@ func resolveAddProject(home, dirFlag, projectName string) (cwd string, ref stora
 	return "", storage.ProjectRef{}, fmt.Errorf("tsk project add: no git origin and not registered (see tsk project register --help)")
 }
 
-func runProjectWhich(home string, args []string) error {
+func runProjectWhich(invk *invocation, args []string) error {
+	home := invk.home
 	var dirFlag string
 	remaining, err := lessflags.
 		String("--dir", &dirFlag).
@@ -265,7 +273,8 @@ func runProjectWhich(home string, args []string) error {
 	return nil
 }
 
-func runProjectRegister(home string, args []string) error {
+func runProjectRegister(invk *invocation, args []string) error {
+	home := invk.home
 	var name, cwdFlag, originFlag string
 	remaining, err := lessflags.
 		String("--name", &name).
@@ -324,6 +333,7 @@ func runProjectRegister(home string, args []string) error {
 		return projectFail(fmt.Errorf("tsk project register: could not determine project name"))
 	}
 
+	invk.setData(storage.EventData{Name: name, Project: origin})
 	if idx < 0 {
 		id, aerr := storage.AllocateSharedProjectID(home, storage.ProjectRef{Origin: origin, Name: name})
 		if aerr != nil {
@@ -477,7 +487,8 @@ func displayRegisterOrigin(o string) string {
 	return o
 }
 
-func runProjectUnregister(home string, args []string) error {
+func runProjectUnregister(invk *invocation, args []string) error {
+	home := invk.home
 	remaining, err := lessflags.
 		Help("-h,--help", projectUnregisterHelp()).
 		HelpNoExit().
@@ -495,6 +506,7 @@ func runProjectUnregister(home string, args []string) error {
 	if name == "" {
 		return projectFail(fmt.Errorf("tsk project unregister: name required"))
 	}
+	invk.setData(storage.EventData{Name: name})
 	reg, err := storage.ReadProjects(home)
 	if err != nil {
 		return projectFail(err)
@@ -526,7 +538,8 @@ type projectListJSONRow struct {
 	Tasks    int    `json:"tasks"`
 }
 
-func runProjectRegistryList(home string, args []string) error {
+func runProjectRegistryList(invk *invocation, args []string) error {
+	home := invk.home
 	var asJSON, activeOnly, allFlag, autoOnly, registeredOnly bool
 	remaining, err := lessflags.
 		Bool("--json", &asJSON).
@@ -787,7 +800,8 @@ type projectTreeJSONProject struct {
 	Tasks []storage.TopicTreeTask `json:"tasks"`
 }
 
-func runProjectTree(home string, args []string) error {
+func runProjectTree(invk *invocation, args []string) error {
+	home := invk.home
 	var nameFlag, projectFlag, stageFlag, dirFlag, subDirsDepthStr string
 	var allFlag, doneFlag, archivedFlag, asJSON, colorFlag, plain, noSubDirs, streamingFlag, noStreamingFlag bool
 	remaining, err := lessflags.

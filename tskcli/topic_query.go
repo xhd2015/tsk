@@ -11,8 +11,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runTopicWhere(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"where"}, args...))
+func runTopicWhere(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"where"}, args...))
 
 	remaining, err := lessflags.
 		Help("-h,--help", topicWhereHelp()).
@@ -27,10 +28,11 @@ func runTopicWhere(home string, args []string) error {
 	if len(remaining) != 1 {
 		return topicErr("tsk topic where: topic required")
 	}
-	_, dir, err := requireTopicDir(home, remaining[0])
+	parts, dir, err := requireTopicDir(home, remaining[0])
 	if err != nil {
 		return topicErr("%s", err.Error())
 	}
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts)})
 	fmt.Println(dir)
 	return nil
 }
@@ -45,8 +47,9 @@ type topicInfoJSON struct {
 	Subtopics []string `json:"subtopics"`
 }
 
-func runTopicInfo(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"info"}, args...))
+func runTopicInfo(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"info"}, args...))
 
 	var asJSON bool
 	remaining, err := lessflags.
@@ -67,6 +70,7 @@ func runTopicInfo(home string, args []string) error {
 	if err != nil {
 		return topicErr("%s", err.Error())
 	}
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts)})
 	if err := storage.MigrateLegacyTopicNotes(dir, parts); err != nil {
 		return fail(err)
 	}
@@ -125,8 +129,9 @@ func runTopicInfo(home string, args []string) error {
 	return nil
 }
 
-func runTopicNote(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"note"}, args...))
+func runTopicNote(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"note"}, args...))
 
 	var labels []string
 	remaining, err := lessflags.
@@ -159,9 +164,10 @@ func runTopicNote(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	text := joinArgs(remaining[1:])
 	note := storage.TopicNote{
 		TS:   storage.NowTimestamp(len(existing) + 1),
-		Text: joinArgs(remaining[1:]),
+		Text: text,
 	}
 	if len(labels) > 0 {
 		note.Labels = labels
@@ -169,11 +175,17 @@ func runTopicNote(home string, args []string) error {
 	if err := storage.AppendTopicNote(dir, note); err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{
+		Topic:  storage.JoinTopicPath(parts),
+		Text:   text,
+		Labels: labels,
+	})
 	return nil
 }
 
-func runTopicNotes(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"notes"}, args...))
+func runTopicNotes(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"notes"}, args...))
 
 	var asJSON bool
 	var limit int
@@ -206,6 +218,7 @@ func runTopicNotes(home string, args []string) error {
 	if err != nil {
 		return topicErr("%s", err.Error())
 	}
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts)})
 	if err := storage.MigrateLegacyTopicNotes(dir, parts); err != nil {
 		return fail(err)
 	}
@@ -217,8 +230,8 @@ func runTopicNotes(home string, args []string) error {
 	return printNotes(notes, asJSON, false)
 }
 
-func runTopicAlias(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"alias"}, args...))
+func runTopicAlias(invk *invocation, args []string) error {
+	invk.setCommand("topic", append([]string{"alias"}, args...))
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(topicAliasHelp())
@@ -226,14 +239,15 @@ func runTopicAlias(home string, args []string) error {
 	}
 	switch args[0] {
 	case "add":
-		return runTopicAliasAdd(home, args[1:])
+		return runTopicAliasAdd(invk, args[1:])
 	default:
 		return topicErr("tsk topic alias: unknown subcommand %q", args[0])
 	}
 }
 
-func runTopicAliasAdd(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"alias", "add"}, args...))
+func runTopicAliasAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"alias", "add"}, args...))
 
 	remaining, err := lessflags.
 		Help("-h,--help", topicAliasAddHelp()).
@@ -258,6 +272,7 @@ func runTopicAliasAdd(home string, args []string) error {
 	if err != nil {
 		return topicErr("%s", err.Error())
 	}
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts), Alias: alias})
 
 	if other, err := storage.FindAliasOwner(home, alias); err != nil {
 		return topicErr("%s", err.Error())

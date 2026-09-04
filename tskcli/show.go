@@ -10,8 +10,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runShow(home string, args []string) error {
-	setCommand(currentCtx, "show", args)
+func runShow(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("show", args)
 
 	remaining, err := lessflags.
 		Help("-h,--help", showHelp()).
@@ -30,6 +31,7 @@ func runShow(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/xhd2015/dot-pkgs/go-pkgs/shell/localbin"
 	lessflags "github.com/xhd2015/less-flags"
+	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
 // installCatalog maps installable shim names to argv prefixes forwarded by the
@@ -29,9 +30,9 @@ func installFail(err error) error {
 	return fmt.Errorf("Error: %s", msg)
 }
 
-func runInstall(_ string, args []string) error {
+func runInstall(invk *invocation, args []string) error {
 	// Install targets ~/.local/bin (user home), not TSK_HOME.
-	setCommand(currentCtx, "install", args)
+	invk.setCommand("install", args)
 
 	var dryRun bool
 	remaining, err := lessflags.
@@ -52,6 +53,10 @@ func runInstall(_ string, args []string) error {
 		return installFail(fmt.Errorf("tsk install: unexpected arguments %q", remaining[1:]))
 	}
 	name := remaining[0]
+	invk.setData(storage.EventData{Name: name})
+	if dryRun {
+		invk.setMutation(false)
+	}
 	argv, ok := installCatalog[name]
 	if !ok {
 		return installFail(fmt.Errorf("tsk install: unknown name %q (available: %s)", name, installAvailableNames()))

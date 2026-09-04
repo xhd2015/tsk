@@ -10,8 +10,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runUpdate(home string, args []string) error {
-	setCommand(currentCtx, "update", args)
+func runUpdate(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("update", args)
 
 	var setProject, setTopic string
 	var clearProject, clearTopic bool
@@ -46,6 +47,14 @@ func runUpdate(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	ev := storage.EventData{TaskID: id}
+	if setTopic != "" {
+		ev.Topic = setTopic
+	}
+	if setProject != "" {
+		ev.Project = setProject
+	}
+	invk.setData(ev)
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
 		return fail(err)

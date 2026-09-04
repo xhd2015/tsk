@@ -2,7 +2,6 @@ package tskcli
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
@@ -13,105 +12,106 @@ func Run(args []string) error {
 	if err != nil {
 		return err
 	}
-	ctx := &invocationContext{
-		home:  home,
-		args:  args,
-		start: time.Now().UTC(),
+	invk := &invocation{
+		home: home,
+		args: args,
 	}
-	initRunCtx(ctx)
 	var runErr error
 	defer func() {
 		exitCode := 0
 		if runErr != nil {
 			exitCode = 1
 		}
-		ctx.finish(exitCode)
+		invk.finish(exitCode)
 	}()
-	runErr = dispatch(home, args)
+	runErr = dispatch(invk, args)
 	return runErr
 }
 
-type invocationContext struct {
+type invocation struct {
 	home      string
 	args      []string
 	command   string
+	action    string
 	eventArgs []string
-	start     time.Time
+	mutation  bool
+	data      *storage.EventData
 }
 
-func (ctx *invocationContext) finish(exitCode int) {
-	ev := storage.Event{
-		TS:       ctx.start.Format(time.RFC3339),
-		Command:  ctx.command,
-		Args:     ctx.eventArgs,
-		ExitCode: exitCode,
+func (invk *invocation) finish(exitCode int) {
+	if invk.command == "" || invk.command == "logs" {
+		return
 	}
-	_ = storage.AppendEvent(ctx.home, ev)
+	ev := storage.Event{
+		TS:       storage.NowLocalTimestamp(),
+		Command:  invk.command,
+		Action:   invk.action,
+		Args:     invk.eventArgs,
+		ExitCode: exitCode,
+		User:     eventUser(),
+		Mutation: invk.mutation,
+		Data:     compactEventData(invk.data),
+	}
+	_ = storage.AppendEvent(invk.home, ev)
 }
 
-func dispatch(home string, args []string) error {
+func dispatch(invk *invocation, args []string) error {
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(topHelp())
 		return nil
 	}
 	switch args[0] {
 	case "add":
-		return runAdd(home, args[1:])
+		return runAdd(invk, args[1:])
 	case "list":
-		return runList(home, args[1:])
+		return runList(invk, args[1:])
 	case "show":
-		return runShow(home, args[1:])
+		return runShow(invk, args[1:])
 	case "status":
-		return runStatus(home, args[1:])
+		return runStatus(invk, args[1:])
 	case "advance":
-		return runAdvance(home, args[1:])
+		return runAdvance(invk, args[1:])
 	case "stage":
-		return runStage(home, args[1:])
+		return runStage(invk, args[1:])
 	case "next":
-		return runNext(home, args[1:])
+		return runNext(invk, args[1:])
 	case "label":
-		return runLabel(home, args[1:])
+		return runLabel(invk, args[1:])
 	case "topic":
-		return runTopic(home, args[1:])
+		return runTopic(invk, args[1:])
 	case "clarify":
-		return runClarify(home, args[1:])
+		return runClarify(invk, args[1:])
 	case "followup":
-		return runFollowup(home, args[1:])
+		return runFollowup(invk, args[1:])
 	case "done":
-		return runDone(home, args[1:])
+		return runDone(invk, args[1:])
 	case "archive":
-		return runArchive(home, args[1:])
+		return runArchive(invk, args[1:])
 	case "delete":
-		return runDelete(home, args[1:])
+		return runDelete(invk, args[1:])
 	case "channel":
-		return runChannel(home, args[1:])
+		return runChannel(invk, args[1:])
 	case "note":
-		return runNote(home, args[1:])
+		return runNote(invk, args[1:])
 	case "tree":
-		return runTree(home, args[1:])
+		return runTree(invk, args[1:])
 	case "progress":
-		return runProgress(home, args[1:])
+		return runProgress(invk, args[1:])
 	case "search":
-		return runSearch(home, args[1:])
+		return runSearch(invk, args[1:])
+	case "logs":
+		return runLogs(invk, args[1:])
 	case "project":
-		return runProject(home, args[1:])
+		return runProject(invk, args[1:])
 	case "update":
-		return runUpdate(home, args[1:])
+		return runUpdate(invk, args[1:])
 	case "install":
-		return runInstall(home, args[1:])
+		return runInstall(invk, args[1:])
 	case "skill":
-		return runSkill(home, args[1:])
+		return runSkill(invk, args[1:])
 	default:
 		return fmt.Errorf("tsk: unknown subcommand %q", args[0])
 	}
-}
-
-func setCommand(ctx *invocationContext, command string, eventArgs []string) {
-	ctx.command = command
-	if eventArgs == nil {
-		eventArgs = []string{}
-	}
-	ctx.eventArgs = eventArgs
 }
 
 func fail(err error) error {

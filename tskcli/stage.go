@@ -8,8 +8,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runStage(home string, args []string) error {
-	setCommand(currentCtx, "stage", args)
+func runStage(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("stage", args)
 
 	var note string
 	remaining, err := lessflags.
@@ -31,6 +32,7 @@ func runStage(home string, args []string) error {
 		return fail(err)
 	}
 	target := remaining[1]
+	invk.setData(storage.EventData{TaskID: id, Stage: target, Text: note})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {

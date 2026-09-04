@@ -4,10 +4,10 @@ import "testing"
 
 func TestProjectTreeStageAllowed(t *testing.T) {
 	cases := []struct {
-		name                     string
-		stage, stageFlag         string
-		done, archived, allFlag  bool
-		want                     bool
+		name                    string
+		stage, stageFlag        string
+		done, archived, allFlag bool
+		want                    bool
 	}{
 		{"default hides done", "done", "", false, false, false, false},
 		{"default hides archived", "archived", "", false, false, false, false},

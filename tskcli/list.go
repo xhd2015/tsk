@@ -11,8 +11,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runList(home string, args []string) error {
-	setCommand(currentCtx, "list", args)
+func runList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("list", args)
 
 	var stage, label, topicPrefix, projectKey, projectName string
 	remaining, err := lessflags.

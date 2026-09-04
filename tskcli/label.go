@@ -12,8 +12,8 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runLabel(home string, args []string) error {
-	setCommand(currentCtx, "label", args)
+func runLabel(invk *invocation, args []string) error {
+	invk.setCommand("label", args)
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(labelHelp())
@@ -21,18 +21,19 @@ func runLabel(home string, args []string) error {
 	}
 	switch args[0] {
 	case "add":
-		return runLabelAdd(home, args[1:])
+		return runLabelAdd(invk, args[1:])
 	case "rm":
-		return runLabelRm(home, args[1:])
+		return runLabelRm(invk, args[1:])
 	case "list":
-		return runLabelList(home, args[1:])
+		return runLabelList(invk, args[1:])
 	default:
 		return fail(fmt.Errorf("tsk label: unknown subcommand %q", args[0]))
 	}
 }
 
-func runLabelList(home string, args []string) error {
-	setCommand(currentCtx, "label", append([]string{"list"}, args...))
+func runLabelList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("label", append([]string{"list"}, args...))
 
 	remaining, err := lessflags.
 		Help("-h,--help", labelListHelp()).
@@ -135,8 +136,9 @@ func collectLabelNames(home string) ([]string, error) {
 	return out, nil
 }
 
-func runLabelAdd(home string, args []string) error {
-	setCommand(currentCtx, "label", append([]string{"add"}, args...))
+func runLabelAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("label", append([]string{"add"}, args...))
 
 	if len(args) != 2 {
 		return fail(fmt.Errorf("tsk label add: task id and label required"))
@@ -146,6 +148,7 @@ func runLabelAdd(home string, args []string) error {
 		return fail(err)
 	}
 	label := args[1]
+	invk.setData(storage.EventData{TaskID: id, Label: label})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
@@ -160,8 +163,9 @@ func runLabelAdd(home string, args []string) error {
 	return nil
 }
 
-func runLabelRm(home string, args []string) error {
-	setCommand(currentCtx, "label", append([]string{"rm"}, args...))
+func runLabelRm(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("label", append([]string{"rm"}, args...))
 
 	if len(args) != 2 {
 		return fail(fmt.Errorf("tsk label rm: task id and label required"))
@@ -171,6 +175,7 @@ func runLabelRm(home string, args []string) error {
 		return fail(err)
 	}
 	label := args[1]
+	invk.setData(storage.EventData{TaskID: id, Label: label})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {

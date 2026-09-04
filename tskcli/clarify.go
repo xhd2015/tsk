@@ -9,8 +9,8 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runClarify(home string, args []string) error {
-	setCommand(currentCtx, "clarify", args)
+func runClarify(invk *invocation, args []string) error {
+	invk.setCommand("clarify", args)
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(clarifyHelp())
@@ -20,18 +20,19 @@ func runClarify(home string, args []string) error {
 	subArgs := args[1:]
 	switch sub {
 	case "add":
-		return runClarifyAdd(home, subArgs)
+		return runClarifyAdd(invk, subArgs)
 	case "list":
-		return runClarifyList(home, subArgs)
+		return runClarifyList(invk, subArgs)
 	case "confirm":
-		return runClarifyConfirm(home, subArgs)
+		return runClarifyConfirm(invk, subArgs)
 	default:
 		return fail(fmt.Errorf("tsk clarify: unknown subcommand %q", sub))
 	}
 }
 
-func runClarifyAdd(home string, args []string) error {
-	setCommand(currentCtx, "clarify", append([]string{"add"}, args...))
+func runClarifyAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("clarify", append([]string{"add"}, args...))
 
 	if len(args) < 2 {
 		return fail(fmt.Errorf("tsk clarify add: task id and question required"))
@@ -41,6 +42,7 @@ func runClarifyAdd(home string, args []string) error {
 		return fail(err)
 	}
 	question := joinArgs(args[1:])
+	invk.setData(storage.EventData{TaskID: id, Text: question})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
@@ -63,8 +65,9 @@ func runClarifyAdd(home string, args []string) error {
 	return storage.WriteClarifyBatch(taskDir, batch)
 }
 
-func runClarifyList(home string, args []string) error {
-	setCommand(currentCtx, "clarify", append([]string{"list"}, args...))
+func runClarifyList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("clarify", append([]string{"list"}, args...))
 
 	if len(args) != 1 {
 		return fail(fmt.Errorf("tsk clarify list: task id required"))
@@ -73,6 +76,7 @@ func runClarifyList(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id})
 	_, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
 		return fail(err)
@@ -90,8 +94,9 @@ func runClarifyList(home string, args []string) error {
 	return nil
 }
 
-func runClarifyConfirm(home string, args []string) error {
-	setCommand(currentCtx, "clarify", append([]string{"confirm"}, args...))
+func runClarifyConfirm(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("clarify", append([]string{"confirm"}, args...))
 
 	var assumeYes bool
 	remaining, err := lessflags.
@@ -112,6 +117,7 @@ func runClarifyConfirm(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
@@ -139,5 +145,6 @@ func runClarifyConfirm(home string, args []string) error {
 		return err
 	}
 
+	invk.setData(storage.EventData{Stage: "implementation"})
 	return storage.SetTaskStage(&task, taskDir, "implementation", "")
 }

@@ -8,8 +8,9 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runDone(home string, args []string) error {
-	setCommand(currentCtx, "done", args)
+func runDone(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("done", args)
 
 	var force bool
 	remaining, err := lessflags.
@@ -31,6 +32,7 @@ func runDone(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id})
 
 	task, taskDir, err := storage.LoadTaskByID(home, id)
 	if err != nil {
@@ -39,5 +41,6 @@ func runDone(home string, args []string) error {
 	if storage.IsTerminal(task.Stage) {
 		return fail(storage.TerminalTransitionError(task.Stage))
 	}
+	invk.setData(storage.EventData{Stage: "done"})
 	return storage.SetTaskStage(&task, taskDir, "done", "")
 }

@@ -20,8 +20,8 @@ var progressStatuses = map[string]struct{}{
 
 const ansiStrikethrough = "\x1b[9m"
 
-func runProgress(home string, args []string) error {
-	setCommand(currentCtx, "progress", args)
+func runProgress(invk *invocation, args []string) error {
+	invk.setCommand("progress", args)
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(progressHelp())
@@ -29,15 +29,15 @@ func runProgress(home string, args []string) error {
 	}
 	switch args[0] {
 	case "add":
-		return runProgressAdd(home, args[1:])
+		return runProgressAdd(invk, args[1:])
 	case "list":
-		return runProgressList(home, args[1:])
+		return runProgressList(invk, args[1:])
 	case "edit":
-		return runProgressEdit(home, args[1:])
+		return runProgressEdit(invk, args[1:])
 	case "archive":
-		return runProgressArchive(home, args[1:])
+		return runProgressArchive(invk, args[1:])
 	case "show":
-		return runProgressShow(home, args[1:])
+		return runProgressShow(invk, args[1:])
 	default:
 		return progressErr("tsk progress: unknown subcommand %q", args[0])
 	}
@@ -64,8 +64,9 @@ func validateProgressStatus(status string, required bool) error {
 	return nil
 }
 
-func runProgressAdd(home string, args []string) error {
-	setCommand(currentCtx, "progress", append([]string{"add"}, args...))
+func runProgressAdd(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("progress", append([]string{"add"}, args...))
 
 	var idStr, status string
 	remaining, err := lessflags.
@@ -98,21 +99,24 @@ func runProgressAdd(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	text := joinArgs(remaining)
 	note := storage.TopicNote{
 		TS:     storage.NowTimestamp(len(existing) + 1),
-		Text:   joinArgs(remaining),
+		Text:   text,
 		Labels: []string{"progress"},
 		Status: status,
 	}
 	if err := storage.AppendTopicNote(dir, note); err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id, Text: text, Status: status})
 	fmt.Println("added progress")
 	return nil
 }
 
-func runProgressList(home string, args []string) error {
-	setCommand(currentCtx, "progress", append([]string{"list"}, args...))
+func runProgressList(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("progress", append([]string{"list"}, args...))
 
 	var idStr, status string
 	var asJSON, showIndex bool
@@ -142,6 +146,7 @@ func runProgressList(home string, args []string) error {
 	if err != nil {
 		return err
 	}
+	invk.setData(storage.EventData{TaskID: id, Status: status})
 	dir, err := loadTaskDir(home, id)
 	if err != nil {
 		return err
@@ -158,8 +163,9 @@ func runProgressList(home string, args []string) error {
 	return printProgressEntries(notes, asJSON, showIndex)
 }
 
-func runProgressEdit(home string, args []string) error {
-	setCommand(currentCtx, "progress", append([]string{"edit"}, args...))
+func runProgressEdit(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("progress", append([]string{"edit"}, args...))
 
 	var idStr, indexStr, status string
 	remaining, err := lessflags.
@@ -186,11 +192,12 @@ func runProgressEdit(home string, args []string) error {
 	if err := validateProgressStatus(status, true); err != nil {
 		return err
 	}
-	return updateProgress(home, id, index, status, strings.TrimSpace(joinArgs(remaining)), "updated progress")
+	return updateProgress(invk, home, id, index, status, strings.TrimSpace(joinArgs(remaining)), "updated progress")
 }
 
-func runProgressArchive(home string, args []string) error {
-	setCommand(currentCtx, "progress", append([]string{"archive"}, args...))
+func runProgressArchive(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("progress", append([]string{"archive"}, args...))
 
 	var idStr, indexStr string
 	remaining, err := lessflags.
@@ -216,7 +223,7 @@ func runProgressArchive(home string, args []string) error {
 	if err != nil {
 		return err
 	}
-	return updateProgress(home, id, index, "archived", "", "archived progress")
+	return updateProgress(invk, home, id, index, "archived", "", "archived progress")
 }
 
 func parseRequiredProgressIndex(raw, cmd string) (int, error) {
@@ -230,7 +237,8 @@ func parseRequiredProgressIndex(raw, cmd string) (int, error) {
 	return index, nil
 }
 
-func updateProgress(home string, id, index int, status, text, success string) error {
+func updateProgress(invk *invocation, home string, id, index int, status, text, success string) error {
+	invk.setData(storage.EventData{TaskID: id, Index: index, Status: status, Text: text})
 	dir, err := loadTaskDir(home, id)
 	if err != nil {
 		return err
@@ -264,8 +272,9 @@ func updateProgress(home string, id, index int, status, text, success string) er
 	return nil
 }
 
-func runProgressShow(home string, args []string) error {
-	setCommand(currentCtx, "progress", append([]string{"show"}, args...))
+func runProgressShow(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("progress", append([]string{"show"}, args...))
 
 	var idStr string
 	remaining, err := lessflags.
@@ -286,6 +295,7 @@ func runProgressShow(home string, args []string) error {
 	if err != nil {
 		return err
 	}
+	invk.setData(storage.EventData{TaskID: id})
 	dir, err := loadTaskDir(home, id)
 	if err != nil {
 		return err

@@ -11,8 +11,8 @@ import (
 	"github.com/xhd2015/tsk/tskcli/storage"
 )
 
-func runTopic(home string, args []string) error {
-	setCommand(currentCtx, "topic", args)
+func runTopic(invk *invocation, args []string) error {
+	invk.setCommand("topic", args)
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(topicHelp())
@@ -20,23 +20,23 @@ func runTopic(home string, args []string) error {
 	}
 	switch args[0] {
 	case "set":
-		return runTopicSet(home, args[1:])
+		return runTopicSet(invk, args[1:])
 	case "mkdir":
-		return runTopicMkdir(home, args[1:])
+		return runTopicMkdir(invk, args[1:])
 	case "rm":
-		return runTopicRm(home, args[1:])
+		return runTopicRm(invk, args[1:])
 	case "where":
-		return runTopicWhere(home, args[1:])
+		return runTopicWhere(invk, args[1:])
 	case "info":
-		return runTopicInfo(home, args[1:])
+		return runTopicInfo(invk, args[1:])
 	case "note":
-		return runTopicNote(home, args[1:])
+		return runTopicNote(invk, args[1:])
 	case "notes":
-		return runTopicNotes(home, args[1:])
+		return runTopicNotes(invk, args[1:])
 	case "view":
-		return runTopicView(home, args[1:])
+		return runTopicView(invk, args[1:])
 	case "alias":
-		return runTopicAlias(home, args[1:])
+		return runTopicAlias(invk, args[1:])
 	default:
 		return fail(fmt.Errorf("tsk topic: unknown subcommand %q", args[0]))
 	}
@@ -69,8 +69,9 @@ func requireTopicDir(home, ref string) ([]string, string, error) {
 	return parts, storage.TopicAbs(home, parts), nil
 }
 
-func runTopicSet(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"set"}, args...))
+func runTopicSet(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"set"}, args...))
 
 	if len(args) < 2 {
 		return fail(fmt.Errorf("tsk topic set: task id and path required"))
@@ -79,6 +80,7 @@ func runTopicSet(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{TaskID: id})
 
 	var topicParts []string
 	switch args[1] {
@@ -98,12 +100,16 @@ func runTopicSet(home string, args []string) error {
 	if task.ParentID != 0 {
 		return fail(fmt.Errorf("tsk topic set: nested task %d: reparent before changing topic", id))
 	}
+	if len(topicParts) > 0 {
+		invk.setData(storage.EventData{Topic: storage.JoinTopicPath(topicParts)})
+	}
 	_, err = storage.MoveTaskDir(home, &task, taskDir, topicParts)
 	return err
 }
 
-func runTopicMkdir(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"mkdir"}, args...))
+func runTopicMkdir(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"mkdir"}, args...))
 
 	if len(args) != 1 {
 		return fail(fmt.Errorf("tsk topic mkdir: path required"))
@@ -120,11 +126,13 @@ func runTopicMkdir(home string, args []string) error {
 		return topicErr("%s is an alias for %s", args[0], storage.JoinTopicPath(resolved))
 	}
 	dir := filepath.Join(home, "topics", filepath.Join(parts...))
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts)})
 	return os.MkdirAll(dir, 0o755)
 }
 
-func runTopicRm(home string, args []string) error {
-	setCommand(currentCtx, "topic", append([]string{"rm"}, args...))
+func runTopicRm(invk *invocation, args []string) error {
+	home := invk.home
+	invk.setCommand("topic", append([]string{"rm"}, args...))
 
 	remaining, err := lessflags.
 		Help("-h,--help", topicRmHelp()).
@@ -147,6 +155,7 @@ func runTopicRm(home string, args []string) error {
 	if err != nil {
 		return fail(err)
 	}
+	invk.setData(storage.EventData{Topic: storage.JoinTopicPath(parts)})
 	if n > 0 {
 		return topicErr("tsk topic rm: topic %s still has %d task(s)", storage.JoinTopicPath(parts), n)
 	}
